@@ -1,6 +1,7 @@
 *.o
 tags
 
+assignments/PA2/*.d
 assignments/PA2/lexer
 assignments/PA2/cgen
 assignments/PA2/semant

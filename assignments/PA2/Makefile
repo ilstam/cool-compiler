@@ -57,7 +57,7 @@ ${HSRC}:
 	-ln -s ${CLASSDIR}/include/PA${ASSN}/$@ $@
 
 clean :
-	-rm -f ${OUTPUT} *.s core ${OBJS} lexer cool-lex.cc *~ parser cgen semant
+	-rm -f ${OUTPUT} *.s *.d core ${OBJS} lexer cool-lex.cc *~ parser cgen semant
 
 clean-compile:
 	@-rm -f core ${OBJS} cool-lex.cc ${LSRC}
