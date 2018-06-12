@@ -1,4 +1,5 @@
 *.o
+tags
 
 assignments/PA2/lexer
 assignments/PA2/cgen
