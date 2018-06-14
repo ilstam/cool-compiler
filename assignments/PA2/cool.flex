@@ -109,6 +109,13 @@ f(?i:alse)    {
 "<="          { return LE; }
 [+-/*<=~.@]   { return yytext[0]; }
 
+ /*
+  * Misc tokens
+  */
+
+[:)(}{,;]    { return yytext[0]; }
+
+
  /* What is still left to implement:
   *
   * STR_CONST
