@@ -88,7 +88,7 @@ t(?i:rue)     {
     return BOOL_CONST;
 }
 f(?i:alse)    {
-    cool_yylval.boolean = 1;
+    cool_yylval.boolean = 0;
     return BOOL_CONST;
 }
 
