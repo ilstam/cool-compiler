@@ -49,8 +49,6 @@ extern YYSTYPE cool_yylval;
  * Define names for regular expressions here.
  */
 
-DARROW          =>
-
 DIGIT           [0-9]
 
 %%
@@ -58,10 +56,6 @@ DIGIT           [0-9]
 \n {
     curr_lineno++;
     printf("\n"); // let's not ruin the format for now
-}
-
-{DARROW} {
-    return (DARROW);
 }
 
 {DIGIT}+ {
@@ -103,17 +97,25 @@ f(?i:alse)    {
     return BOOL_CONST;
 }
 
+ /*
+  * OPERATORS (arithmetic, comparison, dispatch)
+  *
+  * This section contains operators that solely consist of symbols.
+  * Keyword operators are described in the keywords section.
+  */
+
+"=>"          { return DARROW; }
+"<-"          { return ASSIGN; }
+"<="          { return LE; }
+[+-/*<=~.@]   { return yytext[0]; }
+
  /* What is still left to implement:
   *
-  * DARROW
   * STR_CONST
   * INT_CONST
   * TYPEID
   * OBJECTID
-  * ASSIGN
-  * LE
   * ERROR
-  * LET_STMT
   */
 
  /*
