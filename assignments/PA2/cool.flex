@@ -51,17 +51,23 @@ extern YYSTYPE cool_yylval;
 
 DARROW          =>
 
+DIGIT           [0-9]
+
 %%
 
- /*
-  *  Nested comments
-  */
+\n {
+    curr_lineno++;
+    printf("\n"); // let's not ruin the format for now
+}
 
+{DARROW} {
+    return (DARROW);
+}
 
- /*
-  *  The multiple-character operators.
-  */
-{DARROW}		{ return (DARROW); }
+{DIGIT}+ {
+    cool_yylval.symbol = inttable.add_string(yytext);
+    return INT_CONST;
+}
 
  /*
   * Keywords are case-insensitive except for the values true and false,
@@ -71,10 +77,9 @@ DARROW          =>
 
  /*
   *  String constants (C syntax)
-  *  Escape sequence \c is accepted for all characters c. Except for 
+  *  Escape sequence \c is accepted for all characters c. Except for
   *  \n \t \b \f, the result is c.
   *
   */
-
 
 %%
