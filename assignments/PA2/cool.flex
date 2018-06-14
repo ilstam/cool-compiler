@@ -5,7 +5,7 @@
 /*
  *  Stuff enclosed in %{ %} in the first section is copied verbatim to the
  *  output, so headers and global definitions are placed here to be visible
- * to the code in the file.  Don't remove anything that was here initially
+ *  to the code in the file.  Don't remove anything that was here initially
  */
 %{
 #include <cool-parse.h>
@@ -58,11 +58,6 @@ DIGIT           [0-9]
     printf("\n"); // let's not ruin the format for now
 }
 
-{DIGIT}+ {
-    cool_yylval.symbol = inttable.add_string(yytext);
-    return INT_CONST;
-}
-
  /*
   * KEYWORDS
   *
@@ -110,26 +105,33 @@ f(?i:alse)    {
 [+-/*<=~.@]   { return yytext[0]; }
 
  /*
-  * Misc tokens
+  * MISC TOKENS
   */
 
 [:)(}{,;]    { return yytext[0]; }
 
-
- /* What is still left to implement:
-  *
-  * STR_CONST
-  * INT_CONST
-  * TYPEID
-  * OBJECTID
-  * ERROR
+ /*
+  * INTEGERS
   */
+
+{DIGIT}+ {
+    cool_yylval.symbol = inttable.add_string(yytext);
+    return INT_CONST;
+}
 
  /*
   *  String constants (C syntax)
   *  Escape sequence \c is accepted for all characters c. Except for
   *  \n \t \b \f, the result is c.
   *
+  */
+
+ /* What is still left to implement:
+  *
+  * STR_CONST
+  * TYPEID
+  * OBJECTID
+  * ERROR
   */
 
 %%
