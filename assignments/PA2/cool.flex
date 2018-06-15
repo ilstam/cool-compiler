@@ -126,6 +126,11 @@ f(?i:alse)    {
   *
   */
 
+\"[^"]*\" {
+    cool_yylval.symbol = stringtable.add_string(yytext);
+    return STR_CONST;
+}
+
  /* What is still left to implement:
   *
   * STR_CONST
