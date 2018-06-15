@@ -49,7 +49,8 @@ extern YYSTYPE cool_yylval;
  * Define names for regular expressions here.
  */
 
-DIGIT           [0-9]
+DIGIT         [0-9]
+ALPHANUM      [a-zA-Z0-9]
 
 %%
 
@@ -120,6 +121,8 @@ f(?i:alse)    {
 }
 
  /*
+  *  STRINGS
+  *
   *  String constants (C syntax)
   *  Escape sequence \c is accepted for all characters c. Except for
   *  \n \t \b \f, the result is c.
@@ -131,11 +134,37 @@ f(?i:alse)    {
     return STR_CONST;
 }
 
+ /*
+  * IDENTIFIERS
+  *
+  * Type identifiers begin with a capital letter.
+  * Object identifiers begin with a lower case letter.
+  *
+  */
+
+[A-Z]({ALPHANUM}|_)* {
+    cool_yylval.symbol = stringtable.add_string(yytext);
+    return TYPEID;
+}
+
+SELF_TYPE {
+    cool_yylval.symbol = stringtable.add_string(yytext);
+    return TYPEID;
+}
+
+[a-z]({ALPHANUM}|_)* {
+    cool_yylval.symbol = stringtable.add_string(yytext);
+    return OBJECTID;
+}
+
+self {
+    cool_yylval.symbol = stringtable.add_string(yytext);
+    return OBJECTID;
+}
+
  /* What is still left to implement:
   *
   * STR_CONST
-  * TYPEID
-  * OBJECTID
   * ERROR
   */
 
