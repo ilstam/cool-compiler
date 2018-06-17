@@ -162,6 +162,14 @@ self {
     return OBJECTID;
 }
 
+ /*
+  * COMMENTS
+  */
+
+--.*\n {
+    curr_lineno++;
+}
+
  /* What is still left to implement:
   *
   * STR_CONST
