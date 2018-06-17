@@ -217,11 +217,4 @@ self {
     return OBJECTID;
 }
 
-
- /* What is still left to implement:
-  *
-  * STR_CONST
-  * ERROR
-  */
-
 %%
