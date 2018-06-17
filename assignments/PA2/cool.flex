@@ -43,6 +43,8 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 
+int comment_level = 0;
+
 %}
 
 /*
@@ -52,11 +54,58 @@ extern YYSTYPE cool_yylval;
 DIGIT         [0-9]
 ALPHANUM      [a-zA-Z0-9]
 
+%START COMMENT
+
 %%
+
+ /*
+  * NEW LINES
+  */
 
 \n {
     curr_lineno++;
-    printf("\n"); // let's not ruin the format for now
+}
+
+ /*
+  * COMMENTS
+  */
+
+<INITIAL>--.* {
+    curr_lineno++;
+}
+
+"(*" {
+    comment_level++;
+    BEGIN COMMENT;
+}
+
+"*)" {
+    comment_level--;
+
+    if (comment_level == 0) {
+        BEGIN INITIAL;
+    } else if (comment_level == -1) {
+        yylval.error_msg = "Unmatched *)";
+        comment_level = 0;
+        return ERROR;
+    }
+}
+
+<COMMENT>[^\n(*]* {
+    // This is the actual comment so we just ignore it.
+    // It reads as "any char except \n, (, or *" any number of times while in a comment.
+    // We have separate rules for matching (*, *) and \n.
+}
+
+<COMMENT>"("[^*] ; // just consume this
+
+<COMMENT>"*"[^)] ; // just consume this
+
+<COMMENT><<EOF>> {
+    BEGIN INITIAL;
+
+    cool_yylval.error_msg = "EOF in comment";
+    return ERROR;
 }
 
  /*
@@ -162,13 +211,6 @@ self {
     return OBJECTID;
 }
 
- /*
-  * COMMENTS
-  */
-
---.*\n {
-    curr_lineno++;
-}
 
  /* What is still left to implement:
   *
