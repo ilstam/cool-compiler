@@ -43,7 +43,11 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 
+#define MAX_STR_LEN 1024
+
 int comment_level = 0;
+std::string str;
+bool null_in_str = false;
 
 %}
 
@@ -55,6 +59,7 @@ DIGIT         [0-9]
 ALPHANUM      [a-zA-Z0-9]
 
 %START COMMENT
+%START STRING
 
 %%
 
@@ -62,7 +67,7 @@ ALPHANUM      [a-zA-Z0-9]
   * NEW LINES
   */
 
-\n {
+<INITIAL,COMMENT>\n {
     curr_lineno++;
 }
 
@@ -73,6 +78,13 @@ ALPHANUM      [a-zA-Z0-9]
 [ \f\r\t\v]+ ;
 
  /*
+  * NOTE:
+  * We intentionally put rules for comments and strings on top of the file because strings
+  * and comments may contain other tokens inside them as part of them. By putting those rules
+  * first we make sure that they have priority over any other rules.
+  */
+
+ /*
   * COMMENTS
   */
 
@@ -80,12 +92,12 @@ ALPHANUM      [a-zA-Z0-9]
     curr_lineno++;
 }
 
-"(*" {
+<INITIAL,COMMENT>"(*" {
     comment_level++;
     BEGIN COMMENT;
 }
 
-"*)" {
+<INITIAL,COMMENT>"*)" {
     comment_level--;
 
     if (comment_level == 0) {
@@ -113,6 +125,94 @@ ALPHANUM      [a-zA-Z0-9]
     cool_yylval.error_msg = "EOF in comment";
     return ERROR;
 }
+
+ /*
+  *  STRINGS
+  *
+  *  String constants (C syntax)
+  *  Escape sequence \c is accepted for all characters c. Except for
+  *  \n \t \b \f, the result is c.
+  *
+  */
+
+<INITIAL>\" {
+    BEGIN STRING;
+    str = "";
+    null_in_str = false;
+}
+
+<STRING>[^"\n\0\\]* {
+    str += yytext;
+}
+
+<STRING>\\(.|\n) {
+    switch (yytext[1]) {
+    case '\n':
+        curr_lineno++;
+        str.push_back('\n');
+        break;
+    case 'b':
+        str.push_back('\b');
+        break;
+    case 't':
+        str.push_back('\t');
+        break;
+    case 'n':
+        str.push_back('\n');
+        break;
+    case 'f':
+        str.push_back('\f');
+        break;
+    case '\0':
+        null_in_str = true;
+        break;
+    default:
+        str.push_back(yytext[1]);
+        break;
+    }
+}
+
+<STRING>\n {
+    // This is an error since the new line is not escaped.
+    // We assume the user forgot the close-quote and we resume lexing.
+    curr_lineno++;
+
+    BEGIN INITIAL;
+    cool_yylval.symbol = stringtable.add_string((char *) str.c_str());
+    str = "";
+
+    yylval.error_msg = "Unterminated string constant";
+    return ERROR;
+}
+
+<STRING>\0 {
+    null_in_str = true;
+}
+
+<STRING>\" {
+    BEGIN INITIAL;
+
+    if (null_in_str) {
+        yylval.error_msg = "String contains null character";
+        return ERROR;
+    }
+
+    if (str.length() > MAX_STR_LEN) {
+        yylval.error_msg = "String constant too long";
+        return ERROR;
+    }
+
+    cool_yylval.symbol = stringtable.add_string((char *) str.c_str());
+    return STR_CONST;
+}
+
+<STRING><<EOF>> {
+    BEGIN INITIAL;
+
+    cool_yylval.error_msg = "EOF in string constant";
+    return ERROR;
+}
+
 
  /*
   * KEYWORDS
@@ -173,20 +273,6 @@ f(?i:alse)    {
 {DIGIT}+ {
     cool_yylval.symbol = inttable.add_string(yytext);
     return INT_CONST;
-}
-
- /*
-  *  STRINGS
-  *
-  *  String constants (C syntax)
-  *  Escape sequence \c is accepted for all characters c. Except for
-  *  \n \t \b \f, the result is c.
-  *
-  */
-
-\"[^"]*\" {
-    cool_yylval.symbol = stringtable.add_string(yytext);
-    return STR_CONST;
 }
 
  /*
