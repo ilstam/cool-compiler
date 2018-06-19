@@ -88,9 +88,7 @@ ALPHANUM      [a-zA-Z0-9]
   * COMMENTS
   */
 
-<INITIAL>--.* {
-    curr_lineno++;
-}
+<INITIAL>--.* ;
 
 <INITIAL,COMMENT>"(*" {
     comment_level++;
