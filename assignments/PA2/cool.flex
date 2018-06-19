@@ -158,12 +158,9 @@ ALPHANUM      [a-zA-Z0-9]
 
 <STRING>\n {
     // This is an error since the new line is not escaped.
-    // We assume the user forgot the close-quote and we resume lexing.
-    curr_lineno++;
 
     BEGIN INITIAL;
-    cool_yylval.symbol = stringtable.add_string((char *) str.c_str());
-    str = "";
+    curr_lineno++;
 
     yylval.error_msg = "Unterminated string constant";
     return ERROR;
@@ -279,7 +276,7 @@ f(?i:alse)    {
 
 . {
     // If we match anything here it means that no token can begin with that character
-    // or it would have been matched by some rule above. This rule must be the last one.
+    // else it would have been matched by some rule above. This rule must be the last one.
 
     yylval.error_msg = yytext;
     return ERROR;
