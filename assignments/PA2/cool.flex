@@ -75,7 +75,7 @@ ALPHANUM      [a-zA-Z0-9]
   * WHITESPACE
   */
 
-[ \f\r\t\v]+ ;
+<INITIAL>[ \f\r\t\v]+ ;
 
  /*
   * NOTE:
