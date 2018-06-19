@@ -284,22 +284,12 @@ f(?i:alse)    {
   */
 
 [A-Z]({ALPHANUM}|_)* {
-    cool_yylval.symbol = stringtable.add_string(yytext);
-    return TYPEID;
-}
-
-SELF_TYPE {
-    cool_yylval.symbol = stringtable.add_string(yytext);
+    cool_yylval.symbol = idtable.add_string(yytext);
     return TYPEID;
 }
 
 [a-z]({ALPHANUM}|_)* {
-    cool_yylval.symbol = stringtable.add_string(yytext);
-    return OBJECTID;
-}
-
-self {
-    cool_yylval.symbol = stringtable.add_string(yytext);
+    cool_yylval.symbol = idtable.add_string(yytext);
     return OBJECTID;
 }
 
