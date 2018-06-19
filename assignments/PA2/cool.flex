@@ -293,4 +293,16 @@ f(?i:alse)    {
     return OBJECTID;
 }
 
+ /*
+  * INVALID CHARACTERS
+  */
+
+. {
+    // If we match anything here it means that no token can begin with that character
+    // or it would have been matched by some rule above. This rule must be the last one.
+
+    yylval.error_msg = yytext;
+    return ERROR;
+}
+
 %%
