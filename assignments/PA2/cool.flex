@@ -43,17 +43,11 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 
-#define MAX_STR_LEN 1024
-
 int comment_level = 0;
-std::string str;
+std::string str = "";
 bool null_in_str = false;
 
 %}
-
-/*
- * Define names for regular expressions here.
- */
 
 DIGIT         [0-9]
 ALPHANUM      [a-zA-Z0-9]
@@ -78,14 +72,11 @@ ALPHANUM      [a-zA-Z0-9]
 <INITIAL>[ \f\r\t\v]+ ;
 
  /*
-  * NOTE:
+  * COMMENTS
+  *
   * We intentionally put rules for comments and strings on top of the file because strings
   * and comments may contain other tokens inside them as part of them. By putting those rules
   * first we make sure that they have priority over any other rules.
-  */
-
- /*
-  * COMMENTS
   */
 
 <INITIAL>--.* ;
@@ -126,11 +117,6 @@ ALPHANUM      [a-zA-Z0-9]
 
  /*
   *  STRINGS
-  *
-  *  String constants (C syntax)
-  *  Escape sequence \c is accepted for all characters c. Except for
-  *  \n \t \b \f, the result is c.
-  *
   */
 
 <INITIAL>\" {
@@ -195,7 +181,7 @@ ALPHANUM      [a-zA-Z0-9]
         return ERROR;
     }
 
-    if (str.length() > MAX_STR_LEN) {
+    if (str.length() >= MAX_STR_CONST) {
         yylval.error_msg = "String constant too long";
         return ERROR;
     }
@@ -211,12 +197,8 @@ ALPHANUM      [a-zA-Z0-9]
     return ERROR;
 }
 
-
  /*
   * KEYWORDS
-  *
-  * Keywords are case-insensitive except for the values true and false,
-  * which must begin with a lower-case letter.
   */
 
 (?i:class)    { return CLASS; }
