@@ -113,9 +113,9 @@ ALPHANUM      [a-zA-Z0-9]
     // We have separate rules for matching (*, *) and \n.
 }
 
-<COMMENT>"("[^*] ; // just consume this
+<COMMENT>"("/[^*] ; // just consume this
 
-<COMMENT>"*"[^)] ; // just consume this
+<COMMENT>"*"/[^)] ; // just consume this
 
 <COMMENT><<EOF>> {
     BEGIN INITIAL;
