@@ -67,7 +67,7 @@ ${HSRC}:
 	-ln -s ${CLASSDIR}/include/PA${ASSN}/$@ $@
 
 clean :
-	-rm -f ${OUTPUT} *.s core ${OBJS} ${CGEN} ${HGEN} lexer parser cgen semant *~ *.a *.o *.d cool.tab.h cool.output cool-tree.cc cool-tree.aps dumptype.cc handle_flags.cc parser-phase.cc stringtab.cc tokens-lex.cc utilities.cc tree.cc
+	-rm -f ${OUTPUT} *.s core ${OBJS} ${CGEN} ${HGEN} lexer parser cgen semant *~ *.a *.o *.d cool.tab.h cool.output cool-tree.cc cool-tree.aps dumptype.cc handle_flags.cc parser-phase.cc stringtab.cc tokens-lex.cc utilities.cc tree.cc myparser mycoolc
 
 clean-compile:
 	@-rm -f core ${OBJS} ${CGEN} ${HGEN} ${LSRC}

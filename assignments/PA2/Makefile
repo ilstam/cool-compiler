@@ -57,7 +57,7 @@ ${HSRC}:
 	-ln -s ${CLASSDIR}/include/PA${ASSN}/$@ $@
 
 clean :
-	-rm -rf ${OUTPUT} *.s *.d core ${OBJS} lexer cool-lex.cc *~ parser cgen semant handle_flags.cc lextest.cc stringtab.cc utilities.cc grading
+	-rm -rf ${OUTPUT} *.s *.d core ${OBJS} lexer cool-lex.cc *~ parser cgen semant handle_flags.cc lextest.cc stringtab.cc utilities.cc grading mycoolc
 
 clean-compile:
 	@-rm -f core ${OBJS} cool-lex.cc ${LSRC}
