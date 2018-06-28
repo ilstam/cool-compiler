@@ -4,10 +4,10 @@ CLASS= cs143
 CLASSDIR= ../..
 LIB= -lfl
 
-SRC= cool.flex test.cl README 
+SRC= cool.flex test.cl README
 CSRC= lextest.cc utilities.cc stringtab.cc handle_flags.cc
 TSRC= mycoolc
-HSRC= 
+HSRC=
 CGEN= cool-lex.cc
 HGEN=
 LIBS= parser semant cgen
@@ -33,7 +33,7 @@ lsource: ${LSRC}
 
 ${OUTPUT}:	lexer test.cl
 	@rm -f test.output
-	-./lexer test.cl >test.output 2>&1 
+	-./lexer test.cl >test.output 2>&1
 
 lexer: ${OBJS}
 	${CC} ${CFLAGS} ${OBJS} ${LIB} -o lexer
@@ -41,7 +41,7 @@ lexer: ${OBJS}
 .cc.o:
 	${CC} ${CFLAGS} -c $<
 
-cool-lex.cc: cool.flex 
+cool-lex.cc: cool.flex
 	${FLEX} cool.flex
 
 dotest:	lexer test.cl
@@ -57,7 +57,7 @@ ${HSRC}:
 	-ln -s ${CLASSDIR}/include/PA${ASSN}/$@ $@
 
 clean :
-	-rm -f ${OUTPUT} *.s *.d core ${OBJS} lexer cool-lex.cc *~ parser cgen semant
+	-rm -rf ${OUTPUT} *.s *.d core ${OBJS} lexer cool-lex.cc *~ parser cgen semant handle_flags.cc lextest.cc stringtab.cc utilities.cc grading
 
 clean-compile:
 	@-rm -f core ${OBJS} cool-lex.cc ${LSRC}
