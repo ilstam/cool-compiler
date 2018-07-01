@@ -137,8 +137,8 @@
 
     /* Save the root of the abstract syntax tree in a global variable. */
     program : class_list
-                { @$ = @1;
-                  ast_root = program($1); }
+                 { @$ = @1;
+                   ast_root = program($1); }
             ;
 
     class_list : class
@@ -150,38 +150,38 @@
                ;
 
     class : CLASS TYPEID '{' feature_list '}' ';'
-              { $$ = class_($2, idtable.add_string("Object"), $4,
-                            stringtable.add_string(curr_filename)); }
+               { $$ = class_($2, idtable.add_string("Object"), $4,
+                             stringtable.add_string(curr_filename)); }
           | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
-              { $$ = class_($2, $4, $6, stringtable.add_string(curr_filename)); }
+               { $$ = class_($2, $4, $6, stringtable.add_string(curr_filename)); }
           ;
 
     feature_list :
-                     { $$ = nil_Features(); }
+                      { $$ = nil_Features(); }
                  | feature
-                     { $$ = single_Features($1); }
+                      { $$ = single_Features($1); }
                  | feature_list ';' feature
-                     { $$ = append_Features($1, single_Features($3)); }
+                      { $$ = append_Features($1, single_Features($3)); }
                  ;
 
     feature : OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}'
-                { $$ = method($1, $3, $6, $8); }
+                 { $$ = method($1, $3, $6, $8); }
             | OBJECTID ':' TYPEID
-                { $$ = attr($1, $3, no_expr()); }
+                 { $$ = attr($1, $3, no_expr()); }
             | OBJECTID ':' TYPEID ASSIGN expr
-                { $$ = attr($1, $3, $5); }
+                 { $$ = attr($1, $3, $5); }
             ;
 
     formal_list :
-                    { $$ = nil_Formals(); }
+                     { $$ = nil_Formals(); }
                 | formal
-                    { $$ = single_Formals($1); }
+                     { $$ = single_Formals($1); }
                 | formal_list ',' formal
-                    { $$ = append_Formals($1, single_Formals($3)); }
+                     { $$ = append_Formals($1, single_Formals($3)); }
                 ;
 
     formal : OBJECTID ':' TYPEID
-               { $$ = formal($1, $3); }
+                { $$ = formal($1, $3); }
            ;
 
     expr : {} ;
