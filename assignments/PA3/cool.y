@@ -123,10 +123,11 @@
 
     /* Declare types for the grammar's non-terminals. */
     %type <program> program
-    %type <classes> class_list
     %type <class_> class
-    %type <features> feature_list
+    %type <classes> class_list
     %type <feature> feature
+    %type <features> feature_list
+    %type <formal> formal
     %type <formals> formal_list
     %type <expression> expr
 
@@ -157,8 +158,10 @@
 
     feature_list :
                      { $$ = nil_Features(); }
-                 | feature ';' feature_list
-                     { $$ = append_Features($3, single_Features($1)); }
+                 | feature
+                     { $$ = single_Features($1); }
+                 | feature_list ';' feature
+                     { $$ = append_Features($1, single_Features($3)); }
                  ;
 
     feature : OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}'
@@ -169,7 +172,17 @@
                 { $$ = attr($1, $3, $5); }
             ;
 
-    formal_list : {} ;
+    formal_list :
+                    { $$ = nil_Formals(); }
+                | formal
+                    { $$ = single_Formals($1); }
+                | formal_list ',' formal
+                    { $$ = append_Formals($1, single_Formals($3)); }
+                ;
+
+    formal : OBJECTID ':' TYPEID
+               { $$ = formal($1, $3); }
+           ;
 
     expr : {} ;
 
