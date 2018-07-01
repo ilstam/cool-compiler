@@ -130,6 +130,7 @@
     %type <formal> formal
     %type <formals> formal_list
     %type <expression> expr
+    %type <expressions> expr_list_comma expr_list_semicolon
 
     /* Precedence declarations go here. */
 
@@ -184,7 +185,23 @@
                 { $$ = formal($1, $3); }
            ;
 
-    expr : {} ;
+    expr : OBJECTID ASSIGN expr
+              { $$ = assign($1, $3); }
+         | /* skip one for now */
+              {}
+         | OBJECTID '(' expr_list_comma ')'
+              { $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
+         | IF expr THEN expr ELSE expr FI
+              { $$ = cond($2, $4, $6); }
+         | WHILE expr LOOP expr POOL
+              { $$ = loop($2, $4); }
+         | '{' expr_list_semicolon '}'
+              { $$ = block($2); }
+         ;
+
+    expr_list_comma : {} ;
+
+    expr_list_semicolon : {} ;
 
     %%
 
