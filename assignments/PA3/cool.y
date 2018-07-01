@@ -127,6 +127,8 @@
     %type <class_> class
     %type <features> feature_list
     %type <feature> feature
+    %type <formals> formal_list
+    %type <expression> expr
 
     /* Precedence declarations go here. */
 
@@ -159,7 +161,17 @@
                      { $$ = append_Features($3, single_Features($1)); }
                  ;
 
-    feature : {} ;
+    feature : OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}'
+                { $$ = method($1, $3, $6, $8); }
+            | OBJECTID ':' TYPEID
+                { $$ = attr($1, $3, no_expr()); }
+            | OBJECTID ':' TYPEID ASSIGN expr
+                { $$ = attr($1, $3, $5); }
+            ;
+
+    formal_list : {} ;
+
+    expr : {} ;
 
     %%
 
