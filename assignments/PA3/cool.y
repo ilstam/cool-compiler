@@ -189,7 +189,10 @@
 
     expr : OBJECTID ASSIGN expr
               { $$ = assign($1, $3); }
-         /* skip dispatch for now */
+         | expr '@' TYPEID '.' OBJECTID '(' expr_list_comma ')'
+              { $$ = static_dispatch($1, $3, $5, $7); }
+         | expr '.' OBJECTID '(' expr_list_comma ')'
+              { $$ = dispatch($1, $3, $5); }
          | OBJECTID '(' expr_list_comma ')'
               { $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
          | IF expr THEN expr ELSE expr FI
