@@ -189,8 +189,7 @@
 
     expr : OBJECTID ASSIGN expr
               { $$ = assign($1, $3); }
-         | /* skip one for now */
-              {}
+         /* skip dispatch for now */
          | OBJECTID '(' expr_list_comma ')'
               { $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
          | IF expr THEN expr ELSE expr FI
@@ -237,9 +236,19 @@
               { $$ = bool_const($1); }
          ;
 
-    expr_list_comma : {} ;
+    expr_list_comma :
+                         { $$ = nil_Expressions(); }
+                    | expr
+                         { $$ = single_Expressions($1); }
+                    | expr_list_comma ',' expr
+                         { $$ = append_Expressions($1, single_Expressions($3)); }
+                    ;
 
-    expr_list_semicolon : {} ;
+    expr_list_semicolon : expr ';'
+                             { $$ = single_Expressions($1); }
+                        | expr_list_semicolon expr
+                             { $$ = append_Expressions($1, single_Expressions($2)); }
+                        ;
 
     case_ : OBJECTID ':' TYPEID DARROW expr ';'
                { $$ = branch($1, $3, $5); }
@@ -256,9 +265,9 @@
              | OBJECTID ':' TYPEID IN expr
                   { $$ = let($1, $3, no_expr(), $5); }
              | OBJECTID ':' TYPEID ASSIGN expr ',' let_body
-		          { $$ = let($1, $3, $5, $7); }
+                  { $$ = let($1, $3, $5, $7); }
              | OBJECTID ':' TYPEID ',' let_body
-		          { $$ = let($1, $3, no_expr(), $5); }
+                  { $$ = let($1, $3, no_expr(), $5); }
              ;
 
     %%
