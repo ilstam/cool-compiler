@@ -170,7 +170,7 @@
 
     feature_list :
                       { $$ = nil_Features(); }
-                 | feature
+                 | feature ';'
                       { $$ = single_Features($1); }
                  | feature_list ';' feature
                       { $$ = append_Features($1, single_Features($3)); }
