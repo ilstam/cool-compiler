@@ -172,8 +172,8 @@
                       { $$ = nil_Features(); }
                  | feature ';'
                       { $$ = single_Features($1); }
-                 | feature_list ';' feature
-                      { $$ = append_Features($1, single_Features($3)); }
+                 | feature_list feature ';'
+                      { $$ = append_Features($1, single_Features($2)); }
                  ;
 
     feature : OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}'
@@ -258,7 +258,7 @@
 
     expr_list_semicolon : expr ';'
                              { $$ = single_Expressions($1); }
-                        | expr_list_semicolon expr
+                        | expr_list_semicolon expr ';'
                              { $$ = append_Expressions($1, single_Expressions($2)); }
                         ;
 
