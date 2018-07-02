@@ -131,6 +131,8 @@
     %type <formals> formal_list
     %type <expression> expr let_body
     %type <expressions> expr_list_comma expr_list_semicolon
+    %type <case_> case_
+    %type <cases> case_list
 
     /* Precedence declarations go here. */
 
@@ -199,7 +201,8 @@
               { $$ = block($2); }
          | LET let_body
               { $$ = $2; }
-         /* skip case */
+         | CASE expr OF case_list ESAC
+              { $$ = typcase($2, $4); }
          | NEW TYPEID
               { $$ = new_($2); }
          | ISVOID expr
@@ -237,6 +240,16 @@
     expr_list_comma : {} ;
 
     expr_list_semicolon : {} ;
+
+    case_ : OBJECTID ':' TYPEID DARROW expr ';'
+               { $$ = branch($1, $3, $5); }
+          ;
+
+    case_list : case_
+                   { $$ = single_Cases($1); }
+              | case_list case_
+                   { $$ = append_Cases($1, single_Cases($2)); }
+              ;
 
     let_body : OBJECTID ':' TYPEID ASSIGN expr IN expr
                   { $$ = let($1, $3, $5, $7); }
