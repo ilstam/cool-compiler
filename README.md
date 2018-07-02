@@ -8,4 +8,8 @@ COOL stands for Classroom Object Oriented Language and is a simple programming l
 
 Built a lexical analyzer using flex.
 
-## Assignment 2 (will begin soon)
+## Assignment 2 - Parsing
+
+Wrote a LALR parser using bison.
+
+## Assignment 3 (will begin soon)
