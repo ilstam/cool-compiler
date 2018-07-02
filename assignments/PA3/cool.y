@@ -129,7 +129,7 @@
     %type <features> feature_list
     %type <formal> formal
     %type <formals> formal_list
-    %type <expression> expr
+    %type <expression> expr let_body
     %type <expressions> expr_list_comma expr_list_semicolon
 
     /* Precedence declarations go here. */
@@ -197,7 +197,8 @@
               { $$ = loop($2, $4); }
          | '{' expr_list_semicolon '}'
               { $$ = block($2); }
-         /* skip let */
+         | LET let_body
+              { $$ = $2; }
          /* skip case */
          | NEW TYPEID
               { $$ = new_($2); }
@@ -236,6 +237,16 @@
     expr_list_comma : {} ;
 
     expr_list_semicolon : {} ;
+
+    let_body : OBJECTID ':' TYPEID ASSIGN expr IN expr
+                  { $$ = let($1, $3, $5, $7); }
+             | OBJECTID ':' TYPEID IN expr
+                  { $$ = let($1, $3, no_expr(), $5); }
+             | OBJECTID ':' TYPEID ASSIGN expr ',' let_body
+		          { $$ = let($1, $3, $5, $7); }
+             | OBJECTID ':' TYPEID ',' let_body
+		          { $$ = let($1, $3, no_expr(), $5); }
+             ;
 
     %%
 
