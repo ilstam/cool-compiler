@@ -166,6 +166,7 @@
                              stringtable.add_string(curr_filename)); }
           | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
                { $$ = class_($2, $4, $6, stringtable.add_string(curr_filename)); }
+          | error ';'
           ;
 
     feature_list :
@@ -182,6 +183,7 @@
                  { $$ = attr($1, $3, no_expr()); }
             | OBJECTID ':' TYPEID ASSIGN expr
                  { $$ = attr($1, $3, $5); }
+            | error
             ;
 
     formal_list :
@@ -260,6 +262,7 @@
                              { $$ = single_Expressions($1); }
                         | expr_list_semicolon expr ';'
                              { $$ = append_Expressions($1, single_Expressions($2)); }
+                        | error ';'
                         ;
 
     case_ : OBJECTID ':' TYPEID DARROW expr ';'
@@ -280,6 +283,7 @@
                   { $$ = let($1, $3, $5, $7); }
              | OBJECTID ':' TYPEID ',' let_body
                   { $$ = let($1, $3, no_expr(), $5); }
+             | error ',' let_body
              ;
 
     %%
