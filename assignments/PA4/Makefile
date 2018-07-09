@@ -2,7 +2,7 @@
 ASSN = 4
 CLASS= cs143
 CLASSDIR= ../..
-LIB= -L/usr/pubsw/lib -lfl 
+LIB= -L/usr/pubsw/lib -lfl
 AR= gar
 ARCHIVE_NEW= -cr
 RANLIB= gar -qs
@@ -37,8 +37,8 @@ lsource: ${LSRC}
 
 ${OUTPUT}: semant
 	@rm -f ${OUTPUT}
-	./mysemant good.cl >good.output 2>&1 
-	-./mysemant bad.cl >bad.output 2>&1 
+	./mysemant good.cl >good.output 2>&1
+	-./mysemant bad.cl >bad.output 2>&1
 
 compile:	semant change-prot
 
@@ -50,7 +50,7 @@ SEMANT_OBJS := ${filter-out symtab_example.o,${OBJS}}
 semant:  ${SEMANT_OBJS} lexer parser cgen
 	${CC} ${CFLAGS} ${SEMANT_OBJS} ${LIB} -o semant
 
-symtab_example: symtab_example.cc 
+symtab_example: symtab_example.cc
 	${CC} ${CFLAGS} symtab_example.cc ${LIB} -o symtab_example
 
 .cc.o:
@@ -72,7 +72,7 @@ ${HSRC}:
 	-ln -s ${CLASSDIR}/include/PA${ASSN}/$@ $@
 
 clean :
-	-rm -f ${OUTPUT} *.s core ${OBJS} semant cgen symtab_example parser lexer *~ *.a *.o
+	-rm -rf ${OUTPUT} *.s core ${OBJS} semant cgen symtab_example parser lexer *~ *.a *.o *.d ast-lex.cc ast-parse.cc cool-tree.aps cool-tree.cc dumptype.cc handle_flags.cc mycoolc mysemant semant-phase.cc stringtab.cc symtab_example.cc tree.cc utilities.cc grading
 
 clean-compile:
 	@-rm -f core ${OBJS} ${LSRC}
