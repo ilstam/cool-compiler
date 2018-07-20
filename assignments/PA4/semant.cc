@@ -1,11 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <map>
+
 #include "semant.h"
 #include "utilities.h"
 
 extern int semant_debug;
 extern char *curr_filename;
+
+std::map<Symbol, Class_> class_map;
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -79,11 +83,12 @@ static void initialize_constants(void)
 }
 
 
-
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
+    install_basic_classes();
 
-    /* Fill this in */
-
+    for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
+        class_map.insert(std::make_pair(classes->nth(i)->get_name(), classes->nth(i)));
+    }
 }
 
 void ClassTable::install_basic_classes() {
@@ -185,6 +190,12 @@ void ClassTable::install_basic_classes() {
                                    Str,
                                    no_expr()))),
            filename);
+
+    class_map.insert(std::make_pair(Object, Object_class));
+    class_map.insert(std::make_pair(IO, IO_class));
+    class_map.insert(std::make_pair(Int, Int_class));
+    class_map.insert(std::make_pair(Bool, Bool_class));
+    class_map.insert(std::make_pair(Str, Str_class));
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -240,6 +251,12 @@ void program_class::semant()
 
     /* ClassTable constructor may do some semantic analysis */
     ClassTable *classtable = new ClassTable(classes);
+
+    for (auto iter = class_map.begin(); iter != class_map.end(); ++iter) {
+        cout << iter->first << endl;
+    }
+
+    cout << "--------------------" << endl;
 
     /* some semantic analysis code may go here */
 
