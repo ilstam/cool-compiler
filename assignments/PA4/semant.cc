@@ -86,22 +86,44 @@ static void initialize_constants(void)
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
     install_basic_classes();
 
-    Class_ cls;
-    Symbol name;
-
     for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
-        cls = classes->nth(i);
-        name = cls->get_name();
+        Class_ cls = classes->nth(i);
+        Symbol name = cls->get_name();
 
-        if (class_map.find(name) == class_map.end()) {
-            class_map.insert(std::make_pair(name, cls));
-        } else {
+        if (class_map.find(name) != class_map.end()) {
             semant_error(cls) << "redefinition of class " << name << "." << std::endl;
+            return;
         }
+
+        class_map.insert(std::make_pair(name, cls));
     }
 
     if (class_map.find(Main) == class_map.end()) {
         semant_error() << "Class Main is not defined." << std::endl;
+        return;
+    }
+
+    // This is probably slow, but I put simplicity first in this case.
+    for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
+        Class_ cls = classes->nth(i);
+        Symbol starting_class = cls->get_name();
+
+        for (Symbol parent = cls->get_parent(); parent != Object; cls = class_map[parent], parent = cls->get_parent()) {
+            if (class_map.find(parent) == class_map.end()) {
+                semant_error(cls) << "Parent class " << parent << " is not defined." << std::endl;
+                return;
+            }
+
+            if (parent == Int || parent == Bool || parent == Str || parent == SELF_TYPE) {
+                semant_error(cls) << "Classes cannot inherit from basic class" << parent << std::endl;
+                return;
+            }
+
+            if (parent == starting_class) {
+                semant_error(cls) << "An inheritance cycle has been detected." << std::endl;
+                return;
+            }
+        }
     }
 }
 
@@ -265,6 +287,7 @@ void program_class::semant()
 
     ClassTable *classtable = new ClassTable(classes);
 
+    // If the class hierarchy is not well-defined it is acceptable to abort.
     if (classtable->errors()) {
         cerr << "Compilation halted due to static semantic errors." << endl;
         exit(1);
