@@ -86,8 +86,22 @@ static void initialize_constants(void)
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
     install_basic_classes();
 
+    Class_ cls;
+    Symbol name;
+
     for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
-        class_map.insert(std::make_pair(classes->nth(i)->get_name(), classes->nth(i)));
+        cls = classes->nth(i);
+        name = cls->get_name();
+
+        if (class_map.find(name) == class_map.end()) {
+            class_map.insert(std::make_pair(name, cls));
+        } else {
+            semant_error(cls) << "redefinition of class " << name << "." << std::endl;
+        }
+    }
+
+    if (class_map.find(Main) == class_map.end()) {
+        semant_error() << "Class Main is not defined." << std::endl;
     }
 }
 
@@ -249,19 +263,10 @@ void program_class::semant()
 {
     initialize_constants();
 
-    /* ClassTable constructor may do some semantic analysis */
     ClassTable *classtable = new ClassTable(classes);
 
-    for (auto iter = class_map.begin(); iter != class_map.end(); ++iter) {
-        cout << iter->first << endl;
-    }
-
-    cout << "--------------------" << endl;
-
-    /* some semantic analysis code may go here */
-
     if (classtable->errors()) {
-    cerr << "Compilation halted due to static semantic errors." << endl;
-    exit(1);
+        cerr << "Compilation halted due to static semantic errors." << endl;
+        exit(1);
     }
 }
