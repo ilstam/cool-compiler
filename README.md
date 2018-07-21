@@ -2,7 +2,7 @@
 
 This repository contains my C++ implementation of a COOL compiler.
 
-COOL stands for Classroom Object Oriented Language and is a simple programming language used for teaching compilers in Stanford's [CS143 open course](https://lagunita.stanford.edu/courses/Engineering/Compilers/Fall2014/about).
+COOL stands for Classroom Object Oriented Language and is a simple programming language used for teaching compilers in Stanford's [CS143 open course](https://lagunita.stanford.edu/courses/Engineering/Compilers/Fall2014/about). The course project consists of 4 programming assignments (one for each compiler phase) that assembled together constitute a complete COOL compiler.
 
 ## Assignment 1 - Lexical Analysis
 
@@ -10,6 +10,8 @@ Built a lexical analyzer using flex.
 
 ## Assignment 2 - Parsing
 
-Wrote a LALR parser using bison.
+Generated a LALR parser using bison that builds an abstract syntax tree (AST) for each program.
 
-## Assignment 3 (will begin soon)
+## Assignment 3 - Semantic Analysis & Type Checking
+
+In progress...
