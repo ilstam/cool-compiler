@@ -46,6 +46,7 @@ public:
    virtual Symbol get_name() = 0;
    virtual Symbol get_parent() = 0;
    virtual Features get_features() = 0;
+   virtual void check() = 0;
 
 #ifdef Class__EXTRAS
    Class__EXTRAS
@@ -190,6 +191,8 @@ public:
        return features;
    }
 
+   void check();
+
 #ifdef Class__SHARED_EXTRAS
    Class__SHARED_EXTRAS
 #endif
@@ -257,6 +260,10 @@ public:
 
    Symbol get_name() {
        return name;
+   }
+
+   Symbol get_type_decl() {
+       return type_decl;
    }
 
    Symbol typecheck(type_env &tenv);

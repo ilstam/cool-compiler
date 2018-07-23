@@ -420,6 +420,64 @@ method_class *lookup_method(Symbol class_name, Symbol method_name) {
     return nullptr;
 }
 
+/*
+ * This function initiates the object environment of a class by adding to it
+ * all class attributes declared in the class itself along with any inherited
+ * attributes.
+ */
+void build_initial_obj_env(type_env &tenv) {
+    // First add attributes of superclasses to the object environment.
+    for (auto c_iter = class_map.find(tenv.c->get_parent());
+         c_iter != class_map.end();
+         c_iter = class_map.find(c_iter->second->get_parent())
+         ) {
+
+        Features features = c_iter->second->get_features();
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
+            Feature f = features->nth(i);
+
+            attr_class *attribute = dynamic_cast<attr_class *>(f);
+            if (!attribute) {
+                continue; // f is a method not an attribute, so skip it
+            }
+
+            tenv.o.addid(attribute->get_name(), new Symbol(attribute->get_type_decl()));
+        }
+    }
+
+    // Then add attributes declared on that class to the object environment.
+    Features features = tenv.c->get_features();
+    for (int i = features->first(); features->more(i); i = features->next(i)) {
+        Feature f = features->nth(i);
+
+        attr_class *attribute = dynamic_cast<attr_class *>(f);
+        if (!attribute) {
+            continue; // f is a method not an attribute, so skip it
+        }
+
+        if (tenv.o.lookup(attribute->get_name())) {
+            classtable->semant_error(tenv.c->get_filename(), attribute) <<
+                "Attribute " << attribute->get_name() << " is already defined "
+                "either in the same class or in a superclass." << std::endl;
+        } else {
+            tenv.o.addid(attribute->get_name(), new Symbol(attribute->get_type_decl()));
+        }
+    }
+
+    // PS. I feel bad for the code repetition in this function, but I needed
+    // a way to go top-down instead of bottom-up in order to report any
+    // attribute redefinitions where last declared (i.e. reporting them in the
+    // subclass instead of reporting them in the superclass).
+}
+
+void class__class::check() {
+    type_env tenv;
+    tenv.c = this;
+    tenv.o.enterscope();
+
+    build_initial_obj_env(tenv);
+}
+
 /*   This is the entry point to the semantic checker.
 
      Your checker should do the following two things:
@@ -447,20 +505,12 @@ void program_class::semant()
 
     build_method_env();
 
-    //for (auto i = method_env.begin(); i != method_env.end(); i++) {
-        //std::cout << "Class: " << i->first.first;
-        //std::cout << " Method: " << i->first.second;
-        //std::cout << " retval: " << i->second->get_return_type() << std::endl;
-    //}
+    for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
+        classes->nth(i)->check();
+    }
 
-    //std::cout << "----------" << std::endl;
-
-    //method_class *method = lookup_method(idtable.add_string("C"), idtable.add_string("fd"));
-    //if (!method) {
-        //std::cout << "method not found" << std::endl;
-    //} else {
-        //std::cout << "Method return type: " << method->get_return_type() << std::endl;
-    //}
-
-    //std::cout << "----------" << std::endl;
+    if (classtable->errors()) {
+        cerr << "Compilation halted due to static semantic errors." << endl;
+        exit(1);
+    }
 }
