@@ -272,10 +272,42 @@ ostream& ClassTable::semant_error()
     return error_stream;
 }
 
+/*
+ * Returns true if sub is a subclass of super.
+ */
+bool is_subclass(Symbol sub, Symbol super) {
+    for (auto c_iter = class_map.find(sub);
+         c_iter != class_map.end();
+         c_iter = class_map.find(c_iter->second->get_parent())
+         ) {
+
+        if (c_iter->second->get_name() == super) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Type Checking Methods
 
 Symbol method_class::typecheck(type_env &tenv) { return Object; }
-Symbol attr_class::typecheck(type_env &tenv) { return Object; }
+
+Symbol attr_class::typecheck(type_env &tenv) {
+    Symbol t0 = get_type_decl();
+    Symbol t1 = init->typecheck(tenv);
+
+    if (t1 != No_type) {
+        if (is_subclass(t1, t0) == false) {
+            classtable->semant_error(tenv.c->get_filename(), this) <<
+                "Inferred type " << t1 << " of initialization of attribute a " <<
+                "does not conform to declared type " << t0 << "." << std::endl;
+        }
+    }
+
+    return t0;
+}
+
 Symbol assign_class::typecheck(type_env &tenv) { return Object; }
 Symbol static_dispatch_class::typecheck(type_env &tenv) { return Object; }
 Symbol dispatch_class::typecheck(type_env &tenv) { return Object; }
@@ -364,8 +396,26 @@ Symbol string_const_class::typecheck(type_env &tenv) {
 
 Symbol new__class::typecheck(type_env &tenv) { return Object; }
 Symbol isvoid_class::typecheck(type_env &tenv) { return Object; }
-Symbol no_expr_class::typecheck(type_env &tenv) { return Object; }
-Symbol object_class::typecheck(type_env &tenv) { return Object; }
+
+Symbol no_expr_class::typecheck(type_env &tenv) {
+    type = No_type;
+    return type;
+}
+
+Symbol object_class::typecheck(type_env &tenv) {
+    Symbol *t = tenv.o.lookup(get_name());
+
+    if (!t) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Undeclared identifier " << get_name() << "." << std::endl;
+
+        type = Object;
+    } else {
+        type = *t;
+    }
+
+    return type;
+}
 
 // ------------------------
 
@@ -476,6 +526,11 @@ void class__class::check() {
     tenv.o.enterscope();
 
     build_initial_obj_env(tenv);
+
+    Features features = tenv.c->get_features();
+    for (int i = features->first(); features->more(i); i = features->next(i)) {
+        features->nth(i)->typecheck(tenv);
+    }
 }
 
 /*   This is the entry point to the semantic checker.

@@ -878,6 +878,10 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
 
+   Symbol get_name() {
+       return name;
+   }
+
    Symbol typecheck(type_env &tenv);
 
 #ifdef Expression_SHARED_EXTRAS
