@@ -270,7 +270,7 @@ ostream& ClassTable::semant_error()
 }
 
 
-void build_method_environment() {
+void build_method_env() {
     for (auto iter = class_map.begin(); iter != class_map.end(); iter++) {
         Class_ cls = iter->second;
 
@@ -283,10 +283,42 @@ void build_method_environment() {
                 continue; // f is an attribute not a method, so skip it
             }
 
-            method_env.insert(std::make_pair(
-                    std::make_pair(cls->get_name(), f->get_name()), method));
+            method_env[std::make_pair(cls->get_name(), f->get_name())] = method;
         }
     }
+}
+
+/*
+ * This function returns true if the method is explicitly declared in the
+ * given class else false.
+ *
+ * IT DOESN'T CHECK WHETHER THE METHOD IS DECLARED IN ANY OF ITS SUPERCLASSES
+ */
+bool method_is_defined(Symbol class_name, Symbol method_name) {
+    if (method_env.find(std::make_pair(class_name, method_name)) == method_env.end()) {
+        return false;
+    }
+
+    return true;
+}
+
+/*
+ * This is the get interface of the global Method Environment or formally it
+ * returns the result of M(C,f).
+ */
+method_class *lookup_method(Symbol class_name, Symbol method_name) {
+    for (auto c_iter = class_map.find(class_name);
+         c_iter != class_map.end();
+         c_iter = class_map.find(c_iter->second->get_parent())
+         ) {
+
+        auto m_iter = method_env.find(std::make_pair(c_iter->second->get_name(), method_name));
+        if (m_iter != method_env.end()) {
+            return m_iter->second;
+        }
+    }
+
+    return nullptr;
 }
 
 /*   This is the entry point to the semantic checker.
@@ -314,12 +346,21 @@ void program_class::semant()
         exit(1);
     }
 
-    build_method_environment();
+    build_method_env();
 
     //for (auto i = method_env.begin(); i != method_env.end(); i++) {
         //std::cout << "Class: " << i->first.first;
         //std::cout << " Method: " << i->first.second;
         //std::cout << " retval: " << i->second->get_return_type() << std::endl;
+    //}
+
+    //std::cout << "----------" << std::endl;
+
+    //method_class *method = lookup_method(idtable.add_string("C"), idtable.add_string("fd"));
+    //if (!method) {
+        //std::cout << "method not found" << std::endl;
+    //} else {
+        //std::cout << "Method return type: " << method->get_return_type() << std::endl;
     //}
 
     //std::cout << "----------" << std::endl;
