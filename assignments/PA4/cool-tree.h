@@ -38,6 +38,7 @@ public:
 
    virtual Symbol get_name() = 0;
    virtual Symbol get_parent() = 0;
+   virtual Features get_features() = 0;
 
 #ifdef Class__EXTRAS
    Class__EXTRAS
@@ -52,6 +53,8 @@ class Feature_class : public tree_node {
 public:
    tree_node *copy()         { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
+
+   virtual Symbol get_name() = 0;
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -173,6 +176,10 @@ public:
        return parent;
    }
 
+   Features get_features() {
+       return features;
+   }
+
 #ifdef Class__SHARED_EXTRAS
    Class__SHARED_EXTRAS
 #endif
@@ -196,8 +203,21 @@ public:
       return_type = a3;
       expr = a4;
    }
+
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+
+   Symbol get_name() {
+       return name;
+   }
+
+   Formals get_formals() {
+       return formals;
+   }
+
+   Symbol get_return_type() {
+       return return_type;
+   }
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
@@ -222,6 +242,10 @@ public:
    }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+
+   Symbol get_name() {
+       return name;
+   }
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS

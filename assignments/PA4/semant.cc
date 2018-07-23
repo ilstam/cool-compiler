@@ -11,6 +11,9 @@ extern char *curr_filename;
 
 std::map<Symbol, Class_> class_map;
 
+typedef std::pair<Symbol, Symbol> method_id;
+std::map<method_id, method_class *> method_env;
+
 //////////////////////////////////////////////////////////////////////
 //
 // Symbols
@@ -267,6 +270,24 @@ ostream& ClassTable::semant_error()
 }
 
 
+void build_method_environment() {
+    for (auto iter = class_map.begin(); iter != class_map.end(); iter++) {
+        Class_ cls = iter->second;
+
+        Features features = cls->get_features();
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
+            Feature f = features->nth(i);
+
+            method_class *method = dynamic_cast<method_class *>(f);
+            if (!method) {
+                continue; // f is an attribute not a method, so skip it
+            }
+
+            method_env.insert(std::make_pair(
+                    std::make_pair(cls->get_name(), f->get_name()), method));
+        }
+    }
+}
 
 /*   This is the entry point to the semantic checker.
 
@@ -292,4 +313,14 @@ void program_class::semant()
         cerr << "Compilation halted due to static semantic errors." << endl;
         exit(1);
     }
+
+    build_method_environment();
+
+    //for (auto i = method_env.begin(); i != method_env.end(); i++) {
+        //std::cout << "Class: " << i->first.first;
+        //std::cout << " Method: " << i->first.second;
+        //std::cout << " retval: " << i->second->get_return_type() << std::endl;
+    //}
+
+    //std::cout << "----------" << std::endl;
 }
