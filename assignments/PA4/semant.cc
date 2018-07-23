@@ -9,10 +9,13 @@
 extern int semant_debug;
 extern char *curr_filename;
 
+ClassTable *classtable;
+
 std::map<Symbol, Class_> class_map;
 
 typedef std::pair<Symbol, Symbol> method_id;
 std::map<method_id, method_class *> method_env;
+
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -269,6 +272,102 @@ ostream& ClassTable::semant_error()
     return error_stream;
 }
 
+// Type Checking Methods
+
+Symbol method_class::typecheck(type_env &tenv) { return Object; }
+Symbol attr_class::typecheck(type_env &tenv) { return Object; }
+Symbol assign_class::typecheck(type_env &tenv) { return Object; }
+Symbol static_dispatch_class::typecheck(type_env &tenv) { return Object; }
+Symbol dispatch_class::typecheck(type_env &tenv) { return Object; }
+Symbol cond_class::typecheck(type_env &tenv) { return Object; }
+Symbol loop_class::typecheck(type_env &tenv) { return Object; }
+Symbol typcase_class::typecheck(type_env &tenv) { return Object; }
+Symbol block_class::typecheck(type_env &tenv) { return Object; }
+Symbol let_class::typecheck(type_env &tenv) { return Object; }
+
+Symbol plus_class::typecheck(type_env &tenv) {
+    Symbol t_e1 = e1->typecheck(tenv);
+    Symbol t_e2 = e2->typecheck(tenv);
+
+    if (t_e1 != Int || t_e2 != Int) {
+        classtable->semant_error(tenv.c) << "operator + has non-int operands." << std::endl;
+        type = Object;
+    } else {
+        type = Int;
+    }
+
+    return type;
+}
+
+Symbol sub_class::typecheck(type_env &tenv) {
+    Symbol t_e1 = e1->typecheck(tenv);
+    Symbol t_e2 = e2->typecheck(tenv);
+
+    if (t_e1 != Int || t_e2 != Int) {
+        classtable->semant_error(tenv.c) << "operator - has non-int operands." << std::endl;
+        type = Object;
+    } else {
+        type = Int;
+    }
+
+    return type;
+}
+
+Symbol mul_class::typecheck(type_env &tenv) {
+    Symbol t_e1 = e1->typecheck(tenv);
+    Symbol t_e2 = e2->typecheck(tenv);
+
+    if (t_e1 != Int || t_e2 != Int) {
+        classtable->semant_error(tenv.c) << "operator * has non-int operands." << std::endl;
+        type = Object;
+    } else {
+        type = Int;
+    }
+
+    return type;
+}
+
+Symbol divide_class::typecheck(type_env &tenv) {
+    Symbol t_e1 = e1->typecheck(tenv);
+    Symbol t_e2 = e2->typecheck(tenv);
+
+    if (t_e1 != Int || t_e2 != Int) {
+        classtable->semant_error(tenv.c) << "operator / has non-int operands." << std::endl;
+        type = Object;
+    } else {
+        type = Int;
+    }
+
+    return type;
+}
+
+Symbol neg_class::typecheck(type_env &tenv) { return Object; }
+Symbol lt_class::typecheck(type_env &tenv) { return Object; }
+Symbol eq_class::typecheck(type_env &tenv) { return Object; }
+Symbol leq_class::typecheck(type_env &tenv) { return Object; }
+Symbol comp_class::typecheck(type_env &tenv) { return Object; }
+
+Symbol int_const_class::typecheck(type_env &tenv) {
+    type = Int;
+    return type;
+}
+
+Symbol bool_const_class::typecheck(type_env &tenv) {
+    type = Bool;
+    return type;
+}
+
+Symbol string_const_class::typecheck(type_env &tenv) {
+    type = Str;
+    return type;
+}
+
+Symbol new__class::typecheck(type_env &tenv) { return Object; }
+Symbol isvoid_class::typecheck(type_env &tenv) { return Object; }
+Symbol no_expr_class::typecheck(type_env &tenv) { return Object; }
+Symbol object_class::typecheck(type_env &tenv) { return Object; }
+
+// ------------------------
 
 void build_method_env() {
     for (auto iter = class_map.begin(); iter != class_map.end(); iter++) {
@@ -338,7 +437,7 @@ void program_class::semant()
 {
     initialize_constants();
 
-    ClassTable *classtable = new ClassTable(classes);
+    classtable = new ClassTable(classes);
 
     // If the class hierarchy is not well-defined it is acceptable to abort.
     if (classtable->errors()) {
