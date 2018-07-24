@@ -403,7 +403,25 @@ Symbol block_class::typecheck(type_env &tenv) {
     return type;
 }
 
-Symbol let_class::typecheck(type_env &tenv) { return Object; }
+Symbol let_class::typecheck(type_env &tenv) {
+    Symbol t0 = type_decl;
+    Symbol t1 = init->typecheck(tenv);
+
+    if (t1 != No_type && !is_subclass(t1, t0, tenv)) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Inferred type " << t1 << " of initialization of " << identifier <<
+            " does not conform to identifier's declared type " << t0 << "." << std::endl;
+    }
+
+    tenv.o.enterscope();
+    tenv.o.addid(identifier, new Symbol(t0));
+
+    type = body->typecheck(tenv);
+
+    tenv.o.exitscope();
+
+    return type;
+}
 
 Symbol plus_class::typecheck(type_env &tenv) {
     Symbol t_e1 = e1->typecheck(tenv);
