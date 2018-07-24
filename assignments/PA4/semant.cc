@@ -272,6 +272,13 @@ ostream& ClassTable::semant_error()
     return error_stream;
 }
 
+bool cls_is_defined(Symbol cls_name) {
+    if (class_map.find(cls_name) == class_map.end()) {
+        return false;
+    }
+    return true;
+}
+
 /*
  * Returns true if sub is a subclass of super.
  */
@@ -337,7 +344,7 @@ Symbol assign_class::typecheck(type_env &tenv) {
     if (is_subclass(t_, *t) == false) {
         classtable->semant_error(tenv.c->get_filename(), this) <<
             "Type " << t_ << " of assigned expression does not conform to "
-            "declared type " << *t << " of identifier a." << std::endl;
+            "declared type " << *t << " of identifier " << name << "." << std::endl;
         return type;
     }
 
@@ -366,7 +373,8 @@ Symbol plus_class::typecheck(type_env &tenv) {
     Symbol t_e2 = e2->typecheck(tenv);
 
     if (t_e1 != Int || t_e2 != Int) {
-        classtable->semant_error(tenv.c) << "operator + has non-int operands." << std::endl;
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "non-Int arguments: " << t_e1 << " + " << t_e2 << std::endl;
         type = Object;
     } else {
         type = Int;
@@ -380,7 +388,8 @@ Symbol sub_class::typecheck(type_env &tenv) {
     Symbol t_e2 = e2->typecheck(tenv);
 
     if (t_e1 != Int || t_e2 != Int) {
-        classtable->semant_error(tenv.c) << "operator - has non-int operands." << std::endl;
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "non-Int arguments: " << t_e1 << " - " << t_e2 << std::endl;
         type = Object;
     } else {
         type = Int;
@@ -394,7 +403,8 @@ Symbol mul_class::typecheck(type_env &tenv) {
     Symbol t_e2 = e2->typecheck(tenv);
 
     if (t_e1 != Int || t_e2 != Int) {
-        classtable->semant_error(tenv.c) << "operator * has non-int operands." << std::endl;
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "non-Int arguments: " << t_e1 << " * " << t_e2 << std::endl;
         type = Object;
     } else {
         type = Int;
@@ -408,7 +418,8 @@ Symbol divide_class::typecheck(type_env &tenv) {
     Symbol t_e2 = e2->typecheck(tenv);
 
     if (t_e1 != Int || t_e2 != Int) {
-        classtable->semant_error(tenv.c) << "operator / has non-int operands." << std::endl;
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "non-Int arguments: " << t_e1 << " / " << t_e2 << std::endl;
         type = Object;
     } else {
         type = Int;
@@ -417,11 +428,71 @@ Symbol divide_class::typecheck(type_env &tenv) {
     return type;
 }
 
-Symbol neg_class::typecheck(type_env &tenv) { return Object; }
-Symbol lt_class::typecheck(type_env &tenv) { return Object; }
-Symbol eq_class::typecheck(type_env &tenv) { return Object; }
-Symbol leq_class::typecheck(type_env &tenv) { return Object; }
-Symbol comp_class::typecheck(type_env &tenv) { return Object; }
+Symbol neg_class::typecheck(type_env &tenv) {
+    type = e1->typecheck(tenv);
+
+    if (type != Int) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Argument of ~ has type " << type << " instead of Int." << std::endl;
+        type = Int;
+    }
+
+    return type;
+}
+
+Symbol lt_class::typecheck(type_env &tenv) {
+    Symbol t1 = e1->typecheck(tenv);
+    Symbol t2 = e2->typecheck(tenv);
+
+    if (t1 != Int || t2 != Int) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "non-Int arguments: " << t1 << " < " << t2 << std::endl;
+    }
+
+    type = Bool;
+    return type;
+}
+
+Symbol eq_class::typecheck(type_env &tenv) {
+    Symbol t1 = e1->typecheck(tenv);
+    Symbol t2 = e2->typecheck(tenv);
+
+    if (t1 == Int || t1 == Str || t1 == Bool || t2 == Int || t2 == Str || t2 == Bool) {
+        if (t1 != t2) {
+            classtable->semant_error(tenv.c->get_filename(), this) <<
+                "Illegal comparison with a basic type." << std::endl;
+        }
+    }
+
+    type = Bool;
+    return type;
+}
+
+Symbol leq_class::typecheck(type_env &tenv) {
+    Symbol t1 = e1->typecheck(tenv);
+    Symbol t2 = e2->typecheck(tenv);
+
+    if (t1 != Int || t2 != Int) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "non-Int arguments: " << t1 << " <= " << t2 << std::endl;
+    }
+
+    type = Bool;
+    return type;
+}
+
+Symbol comp_class::typecheck(type_env &tenv) {
+    type = e1->typecheck(tenv);
+
+    if (type != Bool) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Argument of 'not' has type " << type << " instead of Bool." << std::endl;
+    }
+
+    type = Bool;
+    return type;
+}
+
 
 Symbol int_const_class::typecheck(type_env &tenv) {
     type = Int;
@@ -438,8 +509,32 @@ Symbol string_const_class::typecheck(type_env &tenv) {
     return type;
 }
 
-Symbol new__class::typecheck(type_env &tenv) { return Object; }
-Symbol isvoid_class::typecheck(type_env &tenv) { return Object; }
+Symbol new__class::typecheck(type_env &tenv) {
+    Symbol t = type_name;
+
+    if (t == SELF_TYPE) {
+        type = tenv.c->get_name();
+        return type;
+    }
+
+    if (! cls_is_defined(t)) {
+
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "'new' used with undefined class " << t << "." << std::endl;
+        type = Object;
+    } else {
+        type = t;
+    }
+
+    return type;
+}
+
+Symbol isvoid_class::typecheck(type_env &tenv) {
+    e1->typecheck(tenv);
+
+    type = Bool;
+    return type;
+}
 
 Symbol no_expr_class::typecheck(type_env &tenv) {
     type = No_type;
