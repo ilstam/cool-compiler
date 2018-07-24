@@ -79,6 +79,9 @@ public:
    tree_node *copy()         { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
 
+   virtual Symbol get_name() = 0;
+   virtual Symbol get_type_decl() = 0;
+
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
 #endif
@@ -290,6 +293,14 @@ public:
    Formal copy_Formal();
    void dump(ostream& stream, int n);
 
+   Symbol get_name() {
+       return name;
+   }
+
+   Symbol get_type_decl() {
+       return type_decl;
+   }
+
 #ifdef Formal_SHARED_EXTRAS
    Formal_SHARED_EXTRAS
 #endif
@@ -335,6 +346,10 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
+
+   Symbol get_name() {
+       return name;
+   }
 
    Symbol typecheck(type_env &tenv);
 

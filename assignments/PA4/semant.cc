@@ -291,10 +291,24 @@ bool is_subclass(Symbol sub, Symbol super) {
 
 // Type Checking Methods
 
-Symbol method_class::typecheck(type_env &tenv) { return Object; }
+Symbol method_class::typecheck(type_env &tenv) {
+    tenv.o.enterscope();
+
+    tenv.o.addid(self, new Symbol(tenv.c->get_name()));
+
+    for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
+        Formal f = formals->nth(i);
+        tenv.o.addid(f->get_name(), new Symbol(f->get_type_decl()));
+    }
+
+    Symbol t0_ = expr->typecheck(tenv);
+    tenv.o.exitscope();
+
+    return Object;
+}
 
 Symbol attr_class::typecheck(type_env &tenv) {
-    Symbol t0 = get_type_decl();
+    Symbol t0 = type_decl;
     Symbol t1 = init->typecheck(tenv);
 
     if (t1 != No_type) {
@@ -308,13 +322,43 @@ Symbol attr_class::typecheck(type_env &tenv) {
     return t0;
 }
 
-Symbol assign_class::typecheck(type_env &tenv) { return Object; }
+Symbol assign_class::typecheck(type_env &tenv) {
+    type = Object;
+    Symbol *t = tenv.o.lookup(name);
+
+    if (!t) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Assignment to undeclared variable " << name << "." << std::endl;
+        return type;
+    }
+
+    Symbol t_ = expr->typecheck(tenv);
+
+    if (is_subclass(t_, *t) == false) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Type " << t_ << " of assigned expression does not conform to "
+            "declared type " << *t << " of identifier a." << std::endl;
+        return type;
+    }
+
+    type = t_;
+    return type;
+}
+
 Symbol static_dispatch_class::typecheck(type_env &tenv) { return Object; }
 Symbol dispatch_class::typecheck(type_env &tenv) { return Object; }
 Symbol cond_class::typecheck(type_env &tenv) { return Object; }
 Symbol loop_class::typecheck(type_env &tenv) { return Object; }
 Symbol typcase_class::typecheck(type_env &tenv) { return Object; }
-Symbol block_class::typecheck(type_env &tenv) { return Object; }
+
+Symbol block_class::typecheck(type_env &tenv) {
+    for (int i = body->first(); body->more(i); i = body->next(i)) {
+        type = body->nth(i)->typecheck(tenv);
+    }
+
+    return type;
+}
+
 Symbol let_class::typecheck(type_env &tenv) { return Object; }
 
 Symbol plus_class::typecheck(type_env &tenv) {
@@ -403,11 +447,11 @@ Symbol no_expr_class::typecheck(type_env &tenv) {
 }
 
 Symbol object_class::typecheck(type_env &tenv) {
-    Symbol *t = tenv.o.lookup(get_name());
+    Symbol *t = tenv.o.lookup(name);
 
     if (!t) {
         classtable->semant_error(tenv.c->get_filename(), this) <<
-            "Undeclared identifier " << get_name() << "." << std::endl;
+            "Undeclared identifier " << name << "." << std::endl;
 
         type = Object;
     } else {
