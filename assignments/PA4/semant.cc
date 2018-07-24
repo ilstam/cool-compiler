@@ -526,7 +526,28 @@ Symbol loop_class::typecheck(type_env &tenv) {
     return type;
 }
 
-Symbol typcase_class::typecheck(type_env &tenv) { return Object; }
+Symbol typcase_class::typecheck(type_env &tenv) {
+    Symbol t0 = expr->typecheck(tenv);
+
+    for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
+        Symbol prev_type = type;
+
+        Case c = cases->nth(i);
+
+        tenv.o.enterscope();
+
+        tenv.o.addid(c->get_name(), new Symbol(c->get_type_decl()));
+        type = c->get_expr()->typecheck(tenv);
+
+        if (i > 0) {
+            type = cls_join(type, prev_type, tenv);
+        }
+
+        tenv.o.exitscope();
+    }
+
+    return type;
+}
 
 Symbol block_class::typecheck(type_env &tenv) {
     for (int i = body->first(); body->more(i); i = body->next(i)) {
