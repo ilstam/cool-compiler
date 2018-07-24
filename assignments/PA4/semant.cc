@@ -273,6 +273,10 @@ ostream& ClassTable::semant_error()
 }
 
 bool cls_is_defined(Symbol cls_name) {
+    if (cls_name == SELF_TYPE) {
+        return true;
+    }
+
     if (class_map.find(cls_name) == class_map.end()) {
         return false;
     }
@@ -282,7 +286,14 @@ bool cls_is_defined(Symbol cls_name) {
 /*
  * Returns true if sub is a subclass of super.
  */
-bool is_subclass(Symbol sub, Symbol super) {
+bool is_subclass(Symbol sub, Symbol super, type_env &tenv) {
+    if (sub == SELF_TYPE) {
+        sub = tenv.c->get_name();
+    }
+    if (super == SELF_TYPE) {
+        super = tenv.c->get_name();
+    }
+
     for (auto c_iter = class_map.find(sub);
          c_iter != class_map.end();
          c_iter = class_map.find(c_iter->second->get_parent())
@@ -299,10 +310,10 @@ bool is_subclass(Symbol sub, Symbol super) {
 /*
  * Returns the first common ancestor of classes a and b.
  */
-Symbol cls_join(Symbol a, Symbol b) {
+Symbol cls_join(Symbol a, Symbol b, type_env &tenv) {
     Class_ cls = class_map[a];
 
-    for (; !is_subclass(b, cls->get_name()); cls = class_map[cls->get_parent()]) {
+    for (; !is_subclass(b, cls->get_name(), tenv); cls = class_map[cls->get_parent()]) {
     }
 
     return cls->get_name();
@@ -313,7 +324,7 @@ Symbol cls_join(Symbol a, Symbol b) {
 Symbol method_class::typecheck(type_env &tenv) {
     tenv.o.enterscope();
 
-    tenv.o.addid(self, new Symbol(tenv.c->get_name()));
+    tenv.o.addid(self, new Symbol(SELF_TYPE));
 
     for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
         Formal f = formals->nth(i);
@@ -331,7 +342,7 @@ Symbol attr_class::typecheck(type_env &tenv) {
     Symbol t1 = init->typecheck(tenv);
 
     if (t1 != No_type) {
-        if (is_subclass(t1, t0) == false) {
+        if (is_subclass(t1, t0, tenv) == false) {
             classtable->semant_error(tenv.c->get_filename(), this) <<
                 "Inferred type " << t1 << " of initialization of attribute a " <<
                 "does not conform to declared type " << t0 << "." << std::endl;
@@ -353,7 +364,7 @@ Symbol assign_class::typecheck(type_env &tenv) {
 
     Symbol t_ = expr->typecheck(tenv);
 
-    if (is_subclass(t_, *t) == false) {
+    if (is_subclass(t_, *t, tenv) == false) {
         classtable->semant_error(tenv.c->get_filename(), this) <<
             "Type " << t_ << " of assigned expression does not conform to "
             "declared type " << *t << " of identifier " << name << "." << std::endl;
@@ -377,7 +388,7 @@ Symbol cond_class::typecheck(type_env &tenv) {
             "Predicate of 'if' does not have type Bool." << std::endl;
     }
 
-    type = cls_join(t2, t3);
+    type = cls_join(t2, t3, tenv);
     return type;
 }
 
@@ -538,13 +549,7 @@ Symbol string_const_class::typecheck(type_env &tenv) {
 Symbol new__class::typecheck(type_env &tenv) {
     Symbol t = type_name;
 
-    if (t == SELF_TYPE) {
-        type = tenv.c->get_name();
-        return type;
-    }
-
     if (! cls_is_defined(t)) {
-
         classtable->semant_error(tenv.c->get_filename(), this) <<
             "'new' used with undefined class " << t << "." << std::endl;
         type = Object;
