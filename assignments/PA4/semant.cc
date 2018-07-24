@@ -392,7 +392,18 @@ Symbol cond_class::typecheck(type_env &tenv) {
     return type;
 }
 
-Symbol loop_class::typecheck(type_env &tenv) { return Object; }
+Symbol loop_class::typecheck(type_env &tenv) {
+    if (pred->typecheck(tenv) != Bool) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Loop condition does not have type Bool" << std::endl;
+    }
+
+    body->typecheck(tenv);
+
+    type = Object;
+    return type;
+}
+
 Symbol typcase_class::typecheck(type_env &tenv) { return Object; }
 
 Symbol block_class::typecheck(type_env &tenv) {
