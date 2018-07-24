@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#include <algorithm>
+#include <vector>
 #include <map>
 
 #include "semant.h"
@@ -366,18 +369,34 @@ Symbol method_class::typecheck(type_env &tenv) {
 
     tenv.o.addid(self, new Symbol(SELF_TYPE));
 
+    std::vector<Symbol> defined;
+
     for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
         Formal f = formals->nth(i);
-        if (f->get_name() == self) {
+        Symbol name = f->get_name();
+        Symbol type_decl = f->get_type_decl();
+
+        if (name == self) {
             classtable->semant_error(tenv.c->get_filename(), this) <<
                 "'self' cannot be the name of a formal parameter." << std::endl;
         } else {
-            if (f->get_type_decl() == SELF_TYPE) {
+            if (type_decl == SELF_TYPE) {
                 classtable->semant_error(tenv.c->get_filename(), this) <<
-                    "Formal parameter " << f->get_name() << " cannot have type "
-                    "SELF_TYPE." << std::endl;
+                    "Formal parameter " << name << " cannot have type SELF_TYPE." << std::endl;
+            } else if (!cls_is_defined(type_decl)) {
+                classtable->semant_error(tenv.c->get_filename(), this) <<
+                    "Class " << type_decl << " of formal parameter " <<
+                    name << " is undefined." << std::endl;
             }
-            tenv.o.addid(f->get_name(), new Symbol(f->get_type_decl()));
+
+            if (std::find(defined.begin(), defined.end(), name) == defined.end() ) {
+                defined.push_back(name);
+            } else {
+                classtable->semant_error(tenv.c->get_filename(), this) <<
+                    "Formal parameter " << name << " is multiply defined." << std::endl;
+            }
+
+            tenv.o.addid(f->get_name(), new Symbol(type_decl));
         }
     }
 
@@ -455,6 +474,14 @@ Symbol static_dispatch_class::typecheck(type_env &tenv) {
     }
 
     method_class *method = lookup_method(t, name);
+    if (!method) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Dispatch to undefined method " << name << "." << std::endl;
+
+        type = Object;
+        return type;
+    }
+
     Formals formals = method->get_formals();
 
     bool formals_are_less;
@@ -493,11 +520,20 @@ Symbol static_dispatch_class::typecheck(type_env &tenv) {
 
 Symbol dispatch_class::typecheck(type_env &tenv) {
     Symbol t0 = expr->typecheck(tenv);
-    if (t0 == SELF_TYPE) {
-        t0 = tenv.c->get_name();
+    Symbol t0_ = t0;
+    if (t0_ == SELF_TYPE) {
+        t0_ = tenv.c->get_name();
     }
 
-    method_class *method = lookup_method(t0, name);
+    method_class *method = lookup_method(t0_, name);
+    if (!method) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Dispatch to undefined method " << name << "." << std::endl;
+
+        type = Object;
+        return type;
+    }
+
     Formals formals = method->get_formals();
 
     bool formals_are_less;
@@ -563,14 +599,27 @@ Symbol loop_class::typecheck(type_env &tenv) {
 Symbol typcase_class::typecheck(type_env &tenv) {
     Symbol t0 = expr->typecheck(tenv);
 
+    std::vector<Symbol> used;
+
     for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
         Symbol prev_type = type;
 
         Case c = cases->nth(i);
+        Symbol type_decl = c->get_type_decl();
+
+        if (std::find(used.begin(), used.end(), type_decl) == used.end() ) {
+            used.push_back(type_decl);
+        } else {
+            classtable->semant_error(tenv.c->get_filename(), this) <<
+                "Duplicate branch " << type_decl << " in case statement." << std::endl;
+
+            type = Object;
+            return type;
+        }
 
         tenv.o.enterscope();
 
-        tenv.o.addid(c->get_name(), new Symbol(c->get_type_decl()));
+        tenv.o.addid(c->get_name(), new Symbol(type_decl));
         type = c->get_expr()->typecheck(tenv);
 
         if (i > 0) {
@@ -602,7 +651,13 @@ Symbol let_class::typecheck(type_env &tenv) {
     }
 
     tenv.o.enterscope();
-    tenv.o.addid(identifier, new Symbol(t0));
+
+    if (identifier != self) {
+        tenv.o.addid(identifier, new Symbol(t0));
+    } else {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "'self' cannot be bound in a 'let' expression." << std::endl;
+    }
 
     type = body->typecheck(tenv);
 
