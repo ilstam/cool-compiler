@@ -101,6 +101,11 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
             return;
         }
 
+        if (name == SELF_TYPE) {
+            semant_error(cls) << "Redefinition of basic class SELF_TYPE." << std::endl;
+            return;
+        }
+
         class_map.insert(std::make_pair(name, cls));
     }
 
@@ -323,10 +328,10 @@ bool cls_is_defined(Symbol cls_name) {
  */
 bool is_subclass(Symbol sub, Symbol super, type_env &tenv) {
     if (sub == SELF_TYPE) {
+        if (super == SELF_TYPE) {
+            return true;
+        }
         sub = tenv.c->get_name();
-    }
-    if (super == SELF_TYPE) {
-        super = tenv.c->get_name();
     }
 
     for (auto c_iter = class_map.find(sub);
@@ -363,16 +368,38 @@ Symbol method_class::typecheck(type_env &tenv) {
 
     for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
         Formal f = formals->nth(i);
-        tenv.o.addid(f->get_name(), new Symbol(f->get_type_decl()));
+        if (f->get_name() == self) {
+            classtable->semant_error(tenv.c->get_filename(), this) <<
+                "'self' cannot be the name of a formal parameter." << std::endl;
+        } else {
+            if (f->get_type_decl() == SELF_TYPE) {
+                classtable->semant_error(tenv.c->get_filename(), this) <<
+                    "Formal parameter " << f->get_name() << " cannot have type "
+                    "SELF_TYPE." << std::endl;
+            }
+            tenv.o.addid(f->get_name(), new Symbol(f->get_type_decl()));
+        }
     }
 
     Symbol t0_ = expr->typecheck(tenv);
     tenv.o.exitscope();
 
+    if (! is_subclass(t0_, return_type, tenv)) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Inferred return type " << t0_ << " of method init does not conform "
+            "to declared return type " << return_type << "." << std::endl;
+    }
+
     return Object;
 }
 
 Symbol attr_class::typecheck(type_env &tenv) {
+    if (name == self) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "'self' cannot be the name of an attribute." << std::endl;
+        return Object;
+    }
+
     Symbol t0 = type_decl;
     Symbol t1 = init->typecheck(tenv);
 
@@ -389,6 +416,13 @@ Symbol attr_class::typecheck(type_env &tenv) {
 
 Symbol assign_class::typecheck(type_env &tenv) {
     type = Object;
+
+    if (name == self) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Cannot assign to 'self'." << std::endl;
+        return type;
+    }
+
     Symbol *t = tenv.o.lookup(name);
 
     if (!t) {
@@ -433,7 +467,7 @@ Symbol static_dispatch_class::typecheck(type_env &tenv) {
             Formal f = formals->nth(i);
             Symbol t_formal = f->get_type_decl();
 
-            if (t_actual != t_formal) {
+            if (!is_subclass(t_actual, t_formal, tenv)) {
                 classtable->semant_error(tenv.c->get_filename(), this) <<
                     "In call of method " << name << ", type " << t_actual <<
                     " of parameter " << f->get_name() << " does not conform to "
@@ -476,7 +510,7 @@ Symbol dispatch_class::typecheck(type_env &tenv) {
             Formal f = formals->nth(i);
             Symbol t_formal = f->get_type_decl();
 
-            if (t_actual != t_formal) {
+            if (!is_subclass(t_actual, t_formal, tenv)) {
                 classtable->semant_error(tenv.c->get_filename(), this) <<
                     "In call of method " << name << ", type " << t_actual <<
                     " of parameter " << f->get_name() << " does not conform to "
@@ -822,6 +856,8 @@ void build_initial_obj_env(type_env &tenv) {
             tenv.o.addid(attribute->get_name(), new Symbol(attribute->get_type_decl()));
         }
     }
+
+    tenv.o.addid(self, new Symbol(SELF_TYPE));
 
     // PS. I feel bad for the code repetition in this function, but I needed
     // a way to go top-down instead of bottom-up in order to report any
