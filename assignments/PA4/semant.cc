@@ -296,6 +296,18 @@ bool is_subclass(Symbol sub, Symbol super) {
     return false;
 }
 
+/*
+ * Returns the first common ancestor of classes a and b.
+ */
+Symbol cls_join(Symbol a, Symbol b) {
+    Class_ cls = class_map[a];
+
+    for (; !is_subclass(b, cls->get_name()); cls = class_map[cls->get_parent()]) {
+    }
+
+    return cls->get_name();
+}
+
 // Type Checking Methods
 
 Symbol method_class::typecheck(type_env &tenv) {
@@ -354,7 +366,21 @@ Symbol assign_class::typecheck(type_env &tenv) {
 
 Symbol static_dispatch_class::typecheck(type_env &tenv) { return Object; }
 Symbol dispatch_class::typecheck(type_env &tenv) { return Object; }
-Symbol cond_class::typecheck(type_env &tenv) { return Object; }
+
+Symbol cond_class::typecheck(type_env &tenv) {
+    Symbol t1 = pred->typecheck(tenv);
+    Symbol t2 = then_exp->typecheck(tenv);
+    Symbol t3 = else_exp->typecheck(tenv);
+
+    if (t1 != Bool) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Predicate of 'if' does not have type Bool." << std::endl;
+    }
+
+    type = cls_join(t2, t3);
+    return type;
+}
+
 Symbol loop_class::typecheck(type_env &tenv) { return Object; }
 Symbol typcase_class::typecheck(type_env &tenv) { return Object; }
 
