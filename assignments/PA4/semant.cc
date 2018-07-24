@@ -272,6 +272,41 @@ ostream& ClassTable::semant_error()
     return error_stream;
 }
 
+///////////////////////////////////////////////////////////////////
+
+/*
+ * This function returns true if the method is explicitly declared in the
+ * given class else false.
+ *
+ * IT DOESN'T CHECK WHETHER THE METHOD IS DECLARED IN ANY OF ITS SUPERCLASSES
+ */
+bool method_is_defined(Symbol class_name, Symbol method_name) {
+    if (method_env.find(std::make_pair(class_name, method_name)) == method_env.end()) {
+        return false;
+    }
+
+    return true;
+}
+
+/*
+ * This is the get interface of the global Method Environment or formally it
+ * returns the result of M(C,f).
+ */
+method_class *lookup_method(Symbol class_name, Symbol method_name) {
+    for (auto c_iter = class_map.find(class_name);
+         c_iter != class_map.end();
+         c_iter = class_map.find(c_iter->second->get_parent())
+         ) {
+
+        auto m_iter = method_env.find(std::make_pair(c_iter->second->get_name(), method_name));
+        if (m_iter != method_env.end()) {
+            return m_iter->second;
+        }
+    }
+
+    return nullptr;
+}
+
 bool cls_is_defined(Symbol cls_name) {
     if (cls_name == SELF_TYPE) {
         return true;
@@ -375,8 +410,95 @@ Symbol assign_class::typecheck(type_env &tenv) {
     return type;
 }
 
-Symbol static_dispatch_class::typecheck(type_env &tenv) { return Object; }
-Symbol dispatch_class::typecheck(type_env &tenv) { return Object; }
+Symbol static_dispatch_class::typecheck(type_env &tenv) {
+    Symbol t0 = expr->typecheck(tenv);
+    Symbol t = type_name;
+
+    if (!is_subclass(t0, t, tenv)) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Expression type " << t0 << " does not conform to declared static "
+            "dispatch type " << t << "." << std::endl;
+    }
+
+    method_class *method = lookup_method(t, name);
+    Formals formals = method->get_formals();
+
+    bool formals_are_less;
+    int i;
+
+    for (i = actual->first(); actual->more(i); i = actual->next(i)) {
+        Symbol t_actual = actual->nth(i)->typecheck(tenv);
+
+        if (formals->more(i)) {
+            Formal f = formals->nth(i);
+            Symbol t_formal = f->get_type_decl();
+
+            if (t_actual != t_formal) {
+                classtable->semant_error(tenv.c->get_filename(), this) <<
+                    "In call of method " << name << ", type " << t_actual <<
+                    " of parameter " << f->get_name() << " does not conform to "
+                    "declared type " << t_formal << "." << std::endl;
+            }
+        } else {
+            formals_are_less = true;
+        }
+    }
+
+    if (formals_are_less || formals->more(i)) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Method " << name << " called with wrong number of arguments." << std::endl;
+    }
+
+    type = method->get_return_type();
+    if (type == SELF_TYPE) {
+        type = t0;
+    }
+
+    return type;
+}
+
+Symbol dispatch_class::typecheck(type_env &tenv) {
+    Symbol t0 = expr->typecheck(tenv);
+    if (t0 == SELF_TYPE) {
+        t0 = tenv.c->get_name();
+    }
+
+    method_class *method = lookup_method(t0, name);
+    Formals formals = method->get_formals();
+
+    bool formals_are_less;
+    int i;
+
+    for (i = actual->first(); actual->more(i); i = actual->next(i)) {
+        Symbol t_actual = actual->nth(i)->typecheck(tenv);
+
+        if (formals->more(i)) {
+            Formal f = formals->nth(i);
+            Symbol t_formal = f->get_type_decl();
+
+            if (t_actual != t_formal) {
+                classtable->semant_error(tenv.c->get_filename(), this) <<
+                    "In call of method " << name << ", type " << t_actual <<
+                    " of parameter " << f->get_name() << " does not conform to "
+                    "declared type " << t_formal << "." << std::endl;
+            }
+        } else {
+            formals_are_less = true;
+        }
+    }
+
+    if (formals_are_less || formals->more(i)) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Method " << name << " called with wrong number of arguments." << std::endl;
+    }
+
+    type = method->get_return_type();
+    if (type == SELF_TYPE) {
+        type = t0;
+    }
+
+    return type;
+}
 
 Symbol cond_class::typecheck(type_env &tenv) {
     Symbol t1 = pred->typecheck(tenv);
@@ -634,39 +756,6 @@ void build_method_env() {
             method_env[std::make_pair(cls->get_name(), f->get_name())] = method;
         }
     }
-}
-
-/*
- * This function returns true if the method is explicitly declared in the
- * given class else false.
- *
- * IT DOESN'T CHECK WHETHER THE METHOD IS DECLARED IN ANY OF ITS SUPERCLASSES
- */
-bool method_is_defined(Symbol class_name, Symbol method_name) {
-    if (method_env.find(std::make_pair(class_name, method_name)) == method_env.end()) {
-        return false;
-    }
-
-    return true;
-}
-
-/*
- * This is the get interface of the global Method Environment or formally it
- * returns the result of M(C,f).
- */
-method_class *lookup_method(Symbol class_name, Symbol method_name) {
-    for (auto c_iter = class_map.find(class_name);
-         c_iter != class_map.end();
-         c_iter = class_map.find(c_iter->second->get_parent())
-         ) {
-
-        auto m_iter = method_env.find(std::make_pair(c_iter->second->get_name(), method_name));
-        if (m_iter != method_env.end()) {
-            return m_iter->second;
-        }
-    }
-
-    return nullptr;
 }
 
 /*
