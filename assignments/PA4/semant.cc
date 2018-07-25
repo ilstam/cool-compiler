@@ -283,17 +283,18 @@ ostream& ClassTable::semant_error()
 ///////////////////////////////////////////////////////////////////
 
 /*
- * This function returns true if the method is explicitly declared in the
- * given class else false.
+ * This method returns a pointer to the method with the same name as the one
+ * provided, if there is such method defined in the provided class.
  *
- * IT DOESN'T CHECK WHETHER THE METHOD IS DECLARED IN ANY OF ITS SUPERCLASSES
+ * THIS FUNCTION DOESN'T CHECK THE SUPERCLASSES OF THE PROVIDED CLASS
  */
-bool method_is_defined(Symbol class_name, Symbol method_name) {
-    if (method_env.find(std::make_pair(class_name, method_name)) == method_env.end()) {
-        return false;
+method_class *method_in_cls(Symbol class_name, Symbol method_name) {
+    auto iter = method_env.find(std::make_pair(class_name, method_name));
+    if (iter == method_env.end()) {
+        return nullptr;
     }
 
-    return true;
+    return iter->second;
 }
 
 /*
@@ -306,9 +307,9 @@ method_class *lookup_method(Symbol class_name, Symbol method_name) {
          c_iter = class_map.find(c_iter->second->get_parent())
          ) {
 
-        auto m_iter = method_env.find(std::make_pair(c_iter->second->get_name(), method_name));
-        if (m_iter != method_env.end()) {
-            return m_iter->second;
+        method_class *method = method_in_cls(c_iter->second->get_name(), method_name);
+        if (method) {
+            return method;
         }
     }
 
@@ -376,35 +377,72 @@ Symbol method_class::typecheck(type_env &tenv) {
 
     tenv.o.addid(self, new Symbol(SELF_TYPE));
 
+    method_class *m = method_in_cls(tenv.c->get_name(), name);
+
+    if (this != m) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Method " << name << " is multiply defined." << std::endl;
+    }
+
+    auto c_iter = class_map.find(tenv.c->get_parent());
+    if (c_iter != class_map.end()) {
+        m = lookup_method(c_iter->second->get_name(), name);
+        // m now holds the derived version of method (if any)
+    }
+
+    bool derived_formals_are_less = false;
+
     std::vector<Symbol> defined;
 
-    for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
+    int i;
+    for (i = formals->first(); formals->more(i); i = formals->next(i)) {
         Formal f = formals->nth(i);
-        Symbol name = f->get_name();
+        Symbol f_name = f->get_name();
         Symbol type_decl = f->get_type_decl();
 
-        if (name == self) {
+        if (f_name == self) {
             classtable->semant_error(tenv.c->get_filename(), this) <<
                 "'self' cannot be the name of a formal parameter." << std::endl;
         } else {
             if (type_decl == SELF_TYPE) {
                 classtable->semant_error(tenv.c->get_filename(), this) <<
-                    "Formal parameter " << name << " cannot have type SELF_TYPE." << std::endl;
+                    "Formal parameter " << f_name << " cannot have type SELF_TYPE." << std::endl;
             } else if (!cls_is_defined(type_decl)) {
                 classtable->semant_error(tenv.c->get_filename(), this) <<
                     "Class " << type_decl << " of formal parameter " <<
-                    name << " is undefined." << std::endl;
+                    f_name << " is undefined." << std::endl;
             }
 
-            if (std::find(defined.begin(), defined.end(), name) == defined.end() ) {
-                defined.push_back(name);
+            if (std::find(defined.begin(), defined.end(), f_name) == defined.end() ) {
+                defined.push_back(f_name);
             } else {
                 classtable->semant_error(tenv.c->get_filename(), this) <<
-                    "Formal parameter " << name << " is multiply defined." << std::endl;
+                    "Formal parameter " << f_name << " is multiply defined." << std::endl;
             }
 
             tenv.o.addid(f->get_name(), new Symbol(type_decl));
         }
+
+        if (m) {
+            Formals formals_derived = m->get_formals();
+            if (formals_derived->more(i)) {
+                Formal f_derived = formals_derived->nth(i);
+                if (f_derived->get_type_decl() != type_decl) {
+                    classtable->semant_error(tenv.c->get_filename(), this) <<
+                        "In redefined method " << name << ", parameter type "
+                         << type_decl << " is different from original type "
+                         << f_derived->get_type_decl() << std::endl;
+                }
+            } else {
+                derived_formals_are_less = true;
+            }
+        }
+    }
+
+    if (m && (derived_formals_are_less || m->get_formals()->more(i))) {
+        classtable->semant_error(tenv.c->get_filename(), this) <<
+            "Incompatible number of formal parameters in redefined method "
+            << name << "." << std::endl;
     }
 
     Symbol t0_ = expr->typecheck(tenv);
