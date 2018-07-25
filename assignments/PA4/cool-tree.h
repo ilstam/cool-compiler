@@ -29,6 +29,8 @@ public:
    tree_node *copy()         { return copy_Program(); }
    virtual Program copy_Program() = 0;
 
+   virtual void check() = 0;
+
 #ifdef Program_EXTRAS
    Program_EXTRAS
 #endif
@@ -159,6 +161,8 @@ public:
    }
    Program copy_Program();
    void dump(ostream& stream, int n);
+
+   void check();
 
 #ifdef Program_SHARED_EXTRAS
    Program_SHARED_EXTRAS

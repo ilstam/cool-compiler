@@ -142,28 +142,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 }
 
 void ClassTable::install_basic_classes() {
-
-    // The tree package uses these globals to annotate the classes built below.
-   // curr_lineno  = 0;
     Symbol filename = stringtable.add_string("<basic class>");
-
-    // The following demonstrates how to create dummy parse trees to
-    // refer to basic Cool classes.  There's no need for method
-    // bodies -- these are already built into the runtime system.
-
-    // IMPORTANT: The results of the following expressions are
-    // stored in local variables.  You will want to do something
-    // with those variables at the end of this method to make this
-    // code meaningful.
-
-    //
-    // The Object class has no parent class. Its methods are
-    //        abort() : Object    aborts the program
-    //        type_name() : Str   returns a string representation of class name
-    //        copy() : SELF_TYPE  returns a copy of the object
-    //
-    // There is no need for method bodies in the basic classes---these
-    // are already built in to the runtime system.
 
     Class_ Object_class =
     class_(Object,
@@ -175,13 +154,6 @@ void ClassTable::install_basic_classes() {
                            single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
        filename);
 
-    //
-    // The IO class inherits from Object. Its methods are
-    //        out_string(Str) : SELF_TYPE       writes a string to the output
-    //        out_int(Int) : SELF_TYPE            "    an int    "  "     "
-    //        in_string() : Str                 reads a string from the input
-    //        in_int() : Int                      "   an int     "  "     "
-    //
     Class_ IO_class =
     class_(IO,
            Object,
@@ -196,30 +168,15 @@ void ClassTable::install_basic_classes() {
                single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
            filename);
 
-    //
-    // The Int class has no methods and only a single attribute, the
-    // "val" for the integer.
-    //
     Class_ Int_class =
     class_(Int,
            Object,
            single_Features(attr(val, prim_slot, no_expr())),
            filename);
 
-    //
-    // Bool also has only the "val" slot.
-    //
     Class_ Bool_class =
     class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename);
 
-    //
-    // The class Str has a number of slots and operations:
-    //       val                                  the length of the string
-    //       str_field                            the string itself
-    //       length() : Int                       returns length of the string
-    //       concat(arg: Str) : Str               performs string concatenation
-    //       substr(arg: Int, arg2: Int): Str     substring selection
-    //
     Class_ Str_class =
     class_(Str,
            Object,
@@ -895,6 +852,9 @@ Symbol object_class::typecheck(type_env &tenv) {
 
 // ------------------------
 
+/*
+ * Builds the global method environment.
+ */
 void build_method_env() {
     for (auto iter = class_map.begin(); iter != class_map.end(); iter++) {
         Class_ cls = iter->second;
@@ -976,6 +936,14 @@ void class__class::check() {
     for (int i = features->first(); features->more(i); i = features->next(i)) {
         features->nth(i)->typecheck(tenv);
     }
+
+    tenv.o.exitscope();
+}
+
+void program_class::check() {
+    for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
+        classes->nth(i)->check();
+    }
 }
 
 /*   This is the entry point to the semantic checker.
@@ -999,17 +967,15 @@ void program_class::semant()
 
     // If the class hierarchy is not well-defined it is acceptable to abort.
     if (classtable->errors()) {
-        cerr << "Compilation halted due to static semantic errors." << endl;
-        exit(1);
+        goto exit_error;
     }
 
     build_method_env();
 
-    for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
-        classes->nth(i)->check();
-    }
+    check();
 
     if (classtable->errors()) {
+    exit_error:
         cerr << "Compilation halted due to static semantic errors." << endl;
         exit(1);
     }
