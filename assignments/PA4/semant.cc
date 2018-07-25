@@ -354,6 +354,13 @@ bool is_subclass(Symbol sub, Symbol super, type_env &tenv) {
  * Returns the first common ancestor of classes a and b.
  */
 Symbol cls_join(Symbol a, Symbol b, type_env &tenv) {
+    if (a == SELF_TYPE) {
+        a = tenv.c->get_name();
+    }
+    if (b == SELF_TYPE) {
+        b = tenv.c->get_name();
+    }
+
     Class_ cls = class_map[a];
 
     for (; !is_subclass(b, cls->get_name(), tenv); cls = class_map[cls->get_parent()]) {
