@@ -2,16 +2,16 @@
 ASSN = 5
 CLASS= cs143
 CLASSDIR= ../..
-LIB= -L/usr/pubsw/lib -lfl 
+LIB= -L/usr/pubsw/lib -lfl
 AR= gar
 ARCHIVE_NEW= -cr
 RANLIB= gar -qs
 
-SRC= cgen.cc cgen.h cgen_supp.cc cool-tree.h cool-tree.handcode.h emit.h example.cl README
-CSRC= cgen-phase.cc utilities.cc stringtab.cc dumptype.cc tree.cc cool-tree.cc ast-lex.cc ast-parse.cc handle_flags.cc 
-TSRC= mycoolc
+SRC= cgen.cc cgen.h cgen_supp.cc cool-tree.h emit.h example.cl README
+CSRC= cgen-phase.cc utilities.cc stringtab.cc dumptype.cc tree.cc cool-tree.cc ast-lex.cc ast-parse.cc handle_flags.cc
+TSRC= mycoolc cool-tree.handcode.h
 CGEN=
-HGEN= 
+HGEN=
 LIBS= lexer parser semant
 CFIL= cgen.cc cgen_supp.cc ${CSRC} ${CGEN}
 LSRC= Makefile
@@ -37,7 +37,7 @@ lsource: ${LSRC}
 
 ${OUTPUT}:	cgen
 	@rm -f ${OUTPUT}
-	./mycoolc  example.cl >example.output 2>&1 
+	./mycoolc  example.cl >example.output 2>&1
 
 compile:	cgen change-prot
 
@@ -64,7 +64,7 @@ ${HSRC}:
 	-ln -s ${CLASSDIR}/include/PA${ASSN}/$@ $@
 
 clean :
-	-rm -f ${OUTPUT} *.s core ${OBJS} cgen parser semant lexer *~ *.a *.o
+	-rm -rf ${OUTPUT} *.s core ${OBJS} cgen parser semant lexer *~ *.a *.o *.d ast-lex.cc ast-parse.cc cgen-phase.cc cool-tree.cc cool-tree.handcode.h dumptype.cc handle_flags.cc stringtab.cc tree.cc utilities.cc
 
 clean-compile:
 	@-rm -f core ${OBJS} ${LSRC}

@@ -7,9 +7,9 @@ AR= gar
 ARCHIVE_NEW= -cr
 RANLIB= gar -qs
 
-SRC= semant.cc semant.h cool-tree.h cool-tree.handcode.h good.cl bad.cl README
+SRC= semant.cc semant.h cool-tree.h README
 CSRC= semant-phase.cc symtab_example.cc  handle_flags.cc  ast-lex.cc ast-parse.cc utilities.cc stringtab.cc dumptype.cc tree.cc cool-tree.cc
-TSRC= mycoolc mysemant cool-tree.aps
+TSRC= mycoolc mysemant cool-tree.aps cool-tree.handcode.h
 CGEN=
 HGEN=
 LIBS= lexer parser cgen
@@ -72,7 +72,7 @@ ${HSRC}:
 	-ln -s ${CLASSDIR}/include/PA${ASSN}/$@ $@
 
 clean :
-	-rm -rf ${OUTPUT} *.s core ${OBJS} semant cgen symtab_example parser lexer *~ *.a *.o *.d ast-lex.cc ast-parse.cc cool-tree.aps cool-tree.cc dumptype.cc handle_flags.cc mycoolc mysemant semant-phase.cc stringtab.cc symtab_example.cc tree.cc utilities.cc grading
+	-rm -rf ${OUTPUT} *.s core ${OBJS} semant cgen symtab_example parser lexer *~ *.a *.o *.d ast-lex.cc ast-parse.cc cool-tree.aps cool-tree.cc cool-tree.handcode.h dumptype.cc handle_flags.cc mycoolc mysemant semant-phase.cc stringtab.cc symtab_example.cc tree.cc utilities.cc grading
 
 clean-compile:
 	@-rm -f core ${OBJS} ${LSRC}
