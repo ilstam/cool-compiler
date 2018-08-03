@@ -21,8 +21,13 @@
 //
 //**************************************************************
 
+#include <vector>
+
 #include "cgen.h"
 #include "cgen_gc.h"
+
+// the index of each class in this vector is its tag
+std::vector<Class_> cls_ordered;
 
 extern void emit_string_constant(ostream& str, char *s);
 extern int cgen_debug;
@@ -623,18 +628,35 @@ void CgenClassTable::code_constants()
     code_bools(boolclasstag);
 }
 
+int get_class_tag(Symbol name)
+{
+    for(std::vector<Class_>::size_type i = 0; i < cls_ordered.size(); i++) {
+        if (cls_ordered[i]->get_name() == name) {
+            return i;
+        }
+    }
+
+    return -1;
+}
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
 {
-    stringclasstag = 0 /* Change to your String class tag here */;
-    intclasstag =    0 /* Change to your Int class tag here */;
-    boolclasstag =   0 /* Change to your Bool class tag here */;
-
     enterscope();
     if (cgen_debug) {
         cout << "Building CgenClassTable" << endl;
     }
+
     install_basic_classes();
+
+    // push the rest of the classes in cls_ordered
+    for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
+        cls_ordered.push_back(classes->nth(i));
+    }
+
+    intclasstag = get_class_tag(Int);
+    boolclasstag = get_class_tag(Bool);
+    stringclasstag = get_class_tag(Str);
+
     install_classes(classes);
     build_inheritance_tree();
 
@@ -675,16 +697,15 @@ void CgenClassTable::install_basic_classes()
     // There is no need for method bodies in the basic classes---these
     // are already built in to the runtime system.
     //
-    install_class(
-        new CgenNode(
-            class_(Object, No_class,
-             append_Features(
-             append_Features(
-             single_Features(method(cool_abort, nil_Formals(), Object, no_expr())),
-             single_Features(method(type_name, nil_Formals(), Str, no_expr()))),
-             single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
-             filename),
-             Basic,this));
+
+    Class_ c_obj = class_(Object, No_class, append_Features(
+            append_Features(
+                single_Features(method(cool_abort, nil_Formals(), Object, no_expr())),
+                single_Features(method(type_name, nil_Formals(), Str, no_expr()))),
+                single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
+            filename);
+
+    install_class(new CgenNode(c_obj, Basic, this));
 
     //
     // The IO class inherits from Object. Its methods are
@@ -693,41 +714,38 @@ void CgenClassTable::install_basic_classes()
     //        in_string() : Str                    reads a string from the input
     //        in_int() : Int                         "   an int     "  "     "
     //
-    install_class(
-     new CgenNode(
-      class_(IO,
-             Object,
-             append_Features(
-             append_Features(
-             append_Features(
-             single_Features(method(out_string, single_Formals(formal(arg, Str)),
-                         SELF_TYPE, no_expr())),
-             single_Features(method(out_int, single_Formals(formal(arg, Int)),
-                         SELF_TYPE, no_expr()))),
-             single_Features(method(in_string, nil_Formals(), Str, no_expr()))),
-             single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
-      filename),
-     Basic,this));
+
+    Class_ c_io = class_(IO, Object, append_Features(
+            append_Features(
+                append_Features(
+                    single_Features(method(out_string, single_Formals(formal(arg, Str)),
+                                SELF_TYPE, no_expr())),
+                    single_Features(method(out_int, single_Formals(formal(arg, Int)),
+                                SELF_TYPE, no_expr()))),
+                    single_Features(method(in_string, nil_Formals(), Str, no_expr()))),
+                single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
+            filename);
+
+    install_class(new CgenNode(c_io, Basic, this));
 
     //
     // The Int class has no methods and only a single attribute, the
     // "val" for the integer.
     //
-    install_class(
-     new CgenNode(
-      class_(Int,
-       Object,
-             single_Features(attr(val, prim_slot, no_expr())),
-       filename),
-      Basic,this));
+
+    Class_ c_int = class_(Int, Object,
+             single_Features(attr(val, prim_slot, no_expr())), filename);
+
+    install_class(new CgenNode(c_int, Basic, this));
 
     //
     // Bool also has only the "val" slot.
     //
-    install_class(
-     new CgenNode(
-      class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename),
-      Basic,this));
+
+    Class_ c_bool = class_(Bool, Object,
+            single_Features(attr(val, prim_slot, no_expr())),filename);
+
+    install_class(new CgenNode(c_bool, Basic, this));
 
     //
     // The class Str has a number of slots and operations:
@@ -737,28 +755,29 @@ void CgenClassTable::install_basic_classes()
     //       concat(arg: Str) : Str               string concatenation
     //       substr(arg: Int, arg2: Int): Str     substring
     //
-    install_class(
-     new CgenNode(
-       class_(Str,
-        Object,
-              append_Features(
-              append_Features(
-              append_Features(
-              append_Features(
-              single_Features(attr(val, Int, no_expr())),
-             single_Features(attr(str_field, prim_slot, no_expr()))),
-             single_Features(method(length, nil_Formals(), Int, no_expr()))),
-             single_Features(method(concat,
-            single_Formals(formal(arg, Str)),
-            Str,
-            no_expr()))),
-       single_Features(method(substr,
-            append_Formals(single_Formals(formal(arg, Int)),
-               single_Formals(formal(arg2, Int))),
-            Str,
-            no_expr()))),
-        filename),
-         Basic,this));
+
+    Class_ c_str = class_(Str, Object,
+        append_Features(
+            append_Features(
+                append_Features(
+                    append_Features(
+                        single_Features(attr(val, Int, no_expr())),
+                        single_Features(attr(str_field, prim_slot, no_expr()))),
+                    single_Features(method(length, nil_Formals(), Int, no_expr()))),
+                single_Features(method(concat, single_Formals(formal(arg, Str)), Str, no_expr()))),
+            single_Features(method(substr,
+                append_Formals(single_Formals(formal(arg, Int)),
+                    single_Formals(formal(arg2, Int))), Str, no_expr()))),
+        filename);
+
+    install_class(new CgenNode(c_str, Basic, this));
+
+    // order of insertion assigns class tag starting from 0
+    cls_ordered.push_back(c_obj);
+    cls_ordered.push_back(c_io);
+    cls_ordered.push_back(c_int);
+    cls_ordered.push_back(c_bool);
+    cls_ordered.push_back(c_str);
 }
 
 // CgenClassTable::install_class
@@ -822,6 +841,16 @@ void CgenNode::set_parentnd(CgenNodeP p)
     parentnd = p;
 }
 
+void CgenClassTable::code_class_name_tab()
+{
+    str << CLASSNAMETAB << LABEL;
+
+    for(auto it = cls_ordered.begin(); it != cls_ordered.end(); it++) {
+        str << WORD;
+        stringtable.lookup_string((*it)->get_name()->get_string())->code_ref(str);
+        str << endl;
+    }
+}
 
 void CgenClassTable::code()
 {
@@ -839,6 +868,8 @@ void CgenClassTable::code()
     //                   - class_nameTab
     //                   - dispatch tables
     //
+
+    code_class_name_tab();
 
     if (cgen_debug) cout << "coding global text" << endl;
     code_global_text();
