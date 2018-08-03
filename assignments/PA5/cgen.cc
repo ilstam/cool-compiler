@@ -21,10 +21,14 @@
 //
 //**************************************************************
 
+#include <map>
 #include <vector>
 
 #include "cgen.h"
 #include "cgen_gc.h"
+
+
+std::map<Symbol, Class_> class_map;
 
 // the index of each class in this vector is its tag
 std::vector<Class_> cls_ordered;
@@ -650,7 +654,9 @@ CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
 
     // push the rest of the classes in cls_ordered
     for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
-        cls_ordered.push_back(classes->nth(i));
+        Class_ cls = classes->nth(i);
+        cls_ordered.push_back(cls);
+        class_map.insert(std::make_pair(cls->get_name(), cls));
     }
 
     intclasstag = get_class_tag(Int);
@@ -778,6 +784,12 @@ void CgenClassTable::install_basic_classes()
     cls_ordered.push_back(c_int);
     cls_ordered.push_back(c_bool);
     cls_ordered.push_back(c_str);
+
+    class_map.insert(std::make_pair(Object, c_obj));
+    class_map.insert(std::make_pair(IO, c_io));
+    class_map.insert(std::make_pair(Int, c_int));
+    class_map.insert(std::make_pair(Bool, c_bool));
+    class_map.insert(std::make_pair(Str, c_str));
 }
 
 // CgenClassTable::install_class
@@ -852,6 +864,35 @@ void CgenClassTable::code_class_name_tab()
     }
 }
 
+
+void code_disptab_recursevily(Class_ cls, ostream &str)
+{
+    if (cls->get_name() != Object) {
+        code_disptab_recursevily(class_map[cls->get_parent()], str);
+    }
+
+    Features features = cls->get_features();
+
+    for (int i = features->first(); features->more(i); i = features->next(i)) {
+        Feature f = features->nth(i);
+
+        method_class *method = dynamic_cast<method_class *>(f);
+        if (!method) {
+            continue; // f is an attribute not a method, so skip it
+        }
+
+        str << WORD << cls->get_name() << "." << f->get_name() << endl;
+    }
+}
+
+void CgenClassTable::code_dispatch_tables()
+{
+    for(auto it = cls_ordered.begin(); it != cls_ordered.end(); it++) {
+        str << (*it)->get_name() << DISPTAB_SUFFIX << LABEL;
+        code_disptab_recursevily(*it, str);
+    }
+}
+
 void CgenClassTable::code()
 {
     if (cgen_debug) cout << "coding global data" << endl;
@@ -870,6 +911,7 @@ void CgenClassTable::code()
     //
 
     code_class_name_tab();
+    code_dispatch_tables();
 
     if (cgen_debug) cout << "coding global text" << endl;
     code_global_text();
