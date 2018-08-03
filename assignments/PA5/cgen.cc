@@ -893,6 +893,50 @@ void CgenClassTable::code_dispatch_tables()
     }
 }
 
+void CgenClassTable::code_prototypes()
+{
+    for(std::vector<Class_>::size_type i = 0; i < cls_ordered.size(); i++) {
+        Features features = cls_ordered[i]->get_features();
+        int num_attrs = 0;
+
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
+            attr_class *at = dynamic_cast<attr_class *>(features->nth(i));
+            if (!at) {
+                continue; // f is a method not an attribute, so skip it
+            }
+            num_attrs++;
+        }
+
+        str << WORD << "-1" << endl;
+        str << cls_ordered[i]->get_name() << PROTOBJ_SUFFIX << LABEL;
+        str << WORD << i << endl; // class tag
+        str << WORD << DEFAULT_OBJFIELDS + num_attrs << endl; // object size
+        str << WORD << cls_ordered[i]->get_name() << DISPTAB_SUFFIX << endl;
+
+        // here I run the loop again but the provided code is so stupidly
+        // designed that I cannot avoid it without modifying stringtab.{cc|h}
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
+            attr_class *at = dynamic_cast<attr_class *>(features->nth(i));
+            if (!at) {
+                continue; // f is a method not an attribute, so skip it
+            }
+
+            Symbol type = at->get_type_decl();
+            str << WORD;
+            if (type == Int) {
+                inttable.lookup_string("0")->code_ref(str);
+            } else if (type == Bool) {
+                falsebool.code_ref(str);
+            } else if (type == Str) {
+                inttable.lookup_string("")->code_ref(str);
+            } else {
+                str << "0";
+            }
+            str << endl;
+        }
+    }
+}
+
 void CgenClassTable::code()
 {
     if (cgen_debug) cout << "coding global data" << endl;
@@ -912,6 +956,7 @@ void CgenClassTable::code()
 
     code_class_name_tab();
     code_dispatch_tables();
+    code_prototypes();
 
     if (cgen_debug) cout << "coding global text" << endl;
     code_global_text();

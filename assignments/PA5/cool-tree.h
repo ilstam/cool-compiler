@@ -227,6 +227,10 @@ public:
        return name;
    }
 
+   Symbol get_type_decl() {
+       return type_decl;
+   }
+
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
