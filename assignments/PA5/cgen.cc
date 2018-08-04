@@ -928,12 +928,47 @@ void CgenClassTable::code_prototypes()
             } else if (type == Bool) {
                 falsebool.code_ref(str);
             } else if (type == Str) {
-                inttable.lookup_string("")->code_ref(str);
+                stringtable.lookup_string("")->code_ref(str);
             } else {
                 str << "0";
             }
             str << endl;
         }
+    }
+}
+
+void CgenClassTable::code_initializers()
+{
+    for(std::vector<Class_>::size_type i = 0; i < cls_ordered.size(); i++) {
+        Class_ cls = cls_ordered[i];
+        str << cls->get_name() << CLASSINIT_SUFFIX << LABEL;
+        str << "\taddiu   $sp $sp -12" << endl
+            << "\tsw  $fp 12($sp)" << endl
+            << "\tsw  $s0 8($sp)" << endl
+            << "\tsw  $ra 4($sp)" << endl
+            << "\taddiu   $fp $sp 4" << endl
+            << "\tmove    $s0 $a0" << endl;
+
+        if (cls->get_name() != Object) {
+            str << "\tjal " << cls->get_parent() << CLASSINIT_SUFFIX << endl;
+        }
+
+        Features features = cls->get_features();
+        for (int i = features->first(); features->more(i); i = features->next(i)) {
+            attr_class *at = dynamic_cast<attr_class *>(features->nth(i));
+            if (!at) {
+                continue; // f is a method not an attribute, so skip it
+            }
+
+            // TODO: add code for member initialization
+        }
+
+        str << "\tmove    $a0 $s0" << endl
+            << "\tlw  $fp 12($sp)" << endl
+            << "\tlw  $s0 8($sp)" << endl
+            << "\tlw  $ra 4($sp)" << endl
+            << "\taddiu   $sp $sp 12" << endl
+            << "\tjr  $ra" << endl;
     }
 }
 
@@ -958,13 +993,15 @@ void CgenClassTable::code()
     code_dispatch_tables();
     code_prototypes();
 
-    if (cgen_debug) cout << "coding global text" << endl;
+    //if (cgen_debug) cout << "coding global text" << endl;
     code_global_text();
 
     //                 Add your code to emit
     //                   - object initializer
     //                   - the class methods
     //                   - etc...
+
+    code_initializers();
 }
 
 
