@@ -986,7 +986,7 @@ void CgenClassTable::code_methods()
 
         if (!is_basic_class(name)) {
             Environment env;
-            env.cls = cls;
+            env.set_cls(cls);
 
             std::vector<method_class *> methods;
             Features features = cls->get_features();
@@ -995,7 +995,7 @@ void CgenClassTable::code_methods()
                 attr_class *attribute = dynamic_cast<attr_class *>(features->nth(i));
 
                 if (attribute) {
-                    env.cls_attrs.push_back(attribute);
+                    env.add_class_attr(attribute);
                 } else {
                     methods.push_back(dynamic_cast<method_class *>(features->nth(i)));
                 }
@@ -1076,7 +1076,7 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //
 void method_class::code(ostream &s, Environment &env)
 {
-    emit_method_ref(env.cls->get_name(), name, s);
+    emit_method_ref(env.get_cls()->get_name(), name, s);
     s << LABEL;
 
     // make space in the stack
@@ -1091,7 +1091,7 @@ void method_class::code(ostream &s, Environment &env)
     emit_move(SELF, ACC, s);
 
     for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
-        env.args.push_back(formals->nth(i));
+        env.add_mth_arg(formals->nth(i));
     }
 
     expr->code(s, env);
@@ -1101,7 +1101,7 @@ void method_class::code(ostream &s, Environment &env)
     emit_load(SELF, 2, SP, s);
     emit_load(RA, 1, SP, s);
     // destroy the stack frame
-    emit_addiu(SP, SP, (DEFAULT_OBJFIELDS + env.args.size()) * 4, s);
+    emit_addiu(SP, SP, (DEFAULT_OBJFIELDS + env.get_mth_args_size()) * 4, s);
     s << RET << "\n";
 }
 
@@ -1184,4 +1184,26 @@ void no_expr_class::code(ostream &s, Environment &env) {
 }
 
 void object_class::code(ostream &s, Environment &env) {
+    int pos;
+
+    pos = env.get_let_var_pos_rev(name);
+    if (pos != -1) {
+        emit_load(ACC, pos + 1, SP, s);
+        return;
+    }
+
+    pos = env.get_arg_pos(name);
+    if (pos != -1) {
+        emit_load(ACC, 2 + env.get_mth_args_size() - pos, FP, s);
+        return;
+    }
+
+    pos = env.get_cls_attr_pos(name);
+    if (pos != -1) {
+        emit_load(ACC, DEFAULT_OBJFIELDS + pos, SELF, s);
+        return;
+    }
+
+    // name == self
+    emit_move(ACC, SELF, s);
 }

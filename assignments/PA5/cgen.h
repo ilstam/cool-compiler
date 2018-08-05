@@ -84,19 +84,76 @@ public:
     void code_ref(ostream&) const;
 };
 
-struct Environment {
+class Environment {
     Class_ cls;
     std::vector<attr_class *> cls_attrs;
-    std::vector<Formal> args;
-    std::vector<Symbol> let_vars;
+    std::vector<Formal> mth_args;
+    std::vector<Symbol> stack_symbols;
 
-    int add_let_var(Symbol name) {
-        let_vars.push_back(name);
-        return (int) let_vars.size() - 1;
+public:
+    Class_ get_cls() {
+        return cls;
     }
 
-    int pop_let_var() {
-        let_vars.pop_back();
-        return (int) let_vars.size() - 1;
+    void set_cls(Class_ cls) {
+        this->cls = cls;
+    }
+
+    int get_cls_attrs_size() {
+        return cls_attrs.size();
+    }
+
+    int get_mth_args_size() {
+        return mth_args.size();
+    }
+
+    void add_class_attr(attr_class *attr) {
+        cls_attrs.push_back(attr);
+    }
+
+    void add_mth_arg(Formal formal) {
+        mth_args.push_back(formal);
+    }
+
+    void push_stack_symbol(Symbol name) {
+        stack_symbols.push_back(name);
+    }
+
+    void pop_stack_symbol() {
+        stack_symbols.pop_back();
+    }
+
+    // returns symbol's position from the END of the vector or -1 if not found
+    // e.g. if "name" corresponds to the last Symbol of the stack_symbols vector
+    //      the function will return 0
+    int get_let_var_pos_rev(Symbol name) {
+        // the vector is searched in reverse order because 2 symbols with the
+        // same name might have been pushed in the stack
+        for (int i = stack_symbols.size() - 1; i >= 0; i--) {
+            if (stack_symbols[i] == name) {
+                return stack_symbols.size() - 1 - i;
+            }
+        }
+        return -1;
+    }
+
+    // returns argument's position on the vector (starting from 0) or -1 if not found
+    int get_arg_pos(Symbol name) {
+        for (int i = 0; i < mth_args.size(); i++) {
+            if (mth_args[i]->get_name() == name) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // returns attribute's position on the vector (starting from 0) or -1 if not found
+    int get_cls_attr_pos(Symbol name) {
+        for (int i = 0; i < cls_attrs.size(); i++) {
+            if (cls_attrs[i]->get_name() == name) {
+                return i;
+            }
+        }
+        return -1;
     }
 };
