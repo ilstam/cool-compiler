@@ -86,6 +86,8 @@ public:
 
 struct Environment {
     Class_ cls;
+    std::vector<attr_class *> cls_attrs;
+    std::vector<Formal> args;
     std::vector<Symbol> let_vars;
 
     int add_let_var(Symbol name) {

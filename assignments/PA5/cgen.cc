@@ -416,6 +416,7 @@ void StringEntry::code_def(ostream& s, int stringclasstag)
       << WORD;
 
     /***** Add dispatch information for class String ******/
+    s << Str << DISPTAB_SUFFIX;
 
     s << endl;                                                  // dispatch table
     s << WORD;
@@ -462,6 +463,7 @@ void IntEntry::code_def(ostream &s, int intclasstag)
       << WORD;
 
     /***** Add dispatch information for class Int ******/
+    s << Int << DISPTAB_SUFFIX;
 
     s << endl;                                          // dispatch table
     s << WORD << str << endl;                           // integer value
@@ -508,6 +510,7 @@ void BoolConst::code_def(ostream& s, int boolclasstag)
       << WORD;
 
     /***** Add dispatch information for class Bool ******/
+    s << Bool << DISPTAB_SUFFIX;
 
     s << endl;                                            // dispatch table
     s << WORD << val << endl;                             // value (0 or 1)
@@ -985,16 +988,21 @@ void CgenClassTable::code_methods()
             Environment env;
             env.cls = cls;
 
+            std::vector<method_class *> methods;
             Features features = cls->get_features();
+
             for (int i = features->first(); features->more(i); i = features->next(i)) {
-                Feature f = features->nth(i);
+                attr_class *attribute = dynamic_cast<attr_class *>(features->nth(i));
 
-                method_class *method = dynamic_cast<method_class *>(f);
-                if (!method) {
-                    continue; // f is an attribute not a method, so skip it
+                if (attribute) {
+                    env.cls_attrs.push_back(attribute);
+                } else {
+                    methods.push_back(dynamic_cast<method_class *>(features->nth(i)));
                 }
+            }
 
-                method->code(str, env);
+            for (auto it = methods.begin(); it != methods.end(); it++) {
+                (*it)->code(str, env);
             }
         }
     }
@@ -1070,6 +1078,31 @@ void method_class::code(ostream &s, Environment &env)
 {
     emit_method_ref(env.cls->get_name(), name, s);
     s << LABEL;
+
+    // make space in the stack
+    emit_addiu(SP, SP, -(DEFAULT_OBJFIELDS * 4), s);
+    // save old $fp, self and $ra values
+    emit_store(FP, 3, SP, s);
+    emit_store(SELF, 2, SP, s);
+    emit_store(RA, 1, SP, s);
+    // set fp to point to old $ra
+    emit_addiu(FP, SP, 4, s);
+    // move acc to self
+    emit_move(SELF, ACC, s);
+
+    for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
+        env.args.push_back(formals->nth(i));
+    }
+
+    expr->code(s, env);
+
+    // restore $fp, self and $ra
+    emit_load(FP, 3, SP, s);
+    emit_load(SELF, 2, SP, s);
+    emit_load(RA, 1, SP, s);
+    // destroy the stack frame
+    emit_addiu(SP, SP, (DEFAULT_OBJFIELDS + env.args.size()) * 4, s);
+    s << RET << "\n";
 }
 
 void assign_class::code(ostream &s, Environment &env) {
