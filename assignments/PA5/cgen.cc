@@ -871,10 +871,10 @@ void CgenClassTable::code_class_name_tab()
 }
 
 
-void code_disptab_recursevily(Class_ cls, ostream &str)
+void get_methods_recursively(Class_ cls, std::vector<std::pair<Class_, method_class *> > &methods)
 {
     if (cls->get_name() != Object) {
-        code_disptab_recursevily(class_map[cls->get_parent()], str);
+        get_methods_recursively(class_map[cls->get_parent()], methods);
     }
 
     Features features = cls->get_features();
@@ -887,15 +887,30 @@ void code_disptab_recursevily(Class_ cls, ostream &str)
             continue; // f is an attribute not a method, so skip it
         }
 
-        str << WORD << cls->get_name() << "." << f->get_name() << endl;
+        bool name_already_exists = false;
+        for (auto it = methods.begin(); it != methods.end(); it++) {
+            if (it->second->get_name() == method->get_name()) {
+                name_already_exists = true;
+                it->first = cls;
+            }
+        }
+
+        if (!name_already_exists) {
+            methods.push_back(std::make_pair(cls, method));
+        }
     }
 }
 
 void CgenClassTable::code_dispatch_tables()
 {
-    for(auto it = cls_ordered.begin(); it != cls_ordered.end(); it++) {
-        str << (*it)->get_name() << DISPTAB_SUFFIX << LABEL;
-        code_disptab_recursevily(*it, str);
+    for(auto it_c = cls_ordered.begin(); it_c != cls_ordered.end(); it_c++) {
+        Class_ cls = *it_c;
+        str << cls->get_name() << DISPTAB_SUFFIX << LABEL;
+        get_methods_recursively(cls, cls->all_methods);
+
+        for (auto it_m = cls->all_methods.begin(); it_m != cls->all_methods.end(); it_m++) {
+            str << WORD << it_m->first->get_name() << "." << it_m->second->get_name() << endl;
+        }
     }
 }
 
@@ -1112,6 +1127,47 @@ void static_dispatch_class::code(ostream &s, Environment &env) {
 }
 
 void dispatch_class::code(ostream &s, Environment &env) {
+    int num_params = 0;
+
+    for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
+        actual->nth(i)->code(s, env);
+        emit_push(ACC, s);
+        env.push_stack_symbol(No_type);
+
+        num_params++;
+    }
+
+    // $a0 = expr_obj
+    expr->code(s, env);
+
+    // TODO: catch dispatch on void
+
+    // $t1 = expr_obj.dispatch_pointer
+    emit_load(T1, 2, ACC, s);
+
+    Class_ cls = env.get_cls();
+    if (expr->get_type() != SELF_TYPE) {
+        cls = class_map[expr->get_type()];
+    }
+
+    int i;
+    for (i = 0; i < (int) cls->all_methods.size(); i++) {
+        if (cls->all_methods[i].second->get_name() == name) {
+            break;
+        }
+    }
+
+    // $t1 = expr_obj.dispatch_pointer + offset_to_proper_func
+    // so, $t1 = pointer_to_proper_func
+    emit_load(T1, i, T1, s);
+    // set $ra to next instruction and jump to $t1
+    emit_jalr(T1, s);
+
+    for (int i = 0; i < num_params; i++) {
+        // this simply removes the symbols from the vector
+        // the callee is responsible for actually increasing the $sp
+        env.pop_stack_symbol();
+    }
 }
 
 void cond_class::code(ostream &s, Environment &env) {
@@ -1124,6 +1180,9 @@ void typcase_class::code(ostream &s, Environment &env) {
 }
 
 void block_class::code(ostream &s, Environment &env) {
+    for (int i = body->first(); body->more(i); i = body->next(i)) {
+        body->nth(i)->code(s, env);
+    }
 }
 
 void let_class::code(ostream &s, Environment &env) {

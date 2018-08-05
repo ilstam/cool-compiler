@@ -139,7 +139,7 @@ public:
 
     // returns argument's position on the vector (starting from 0) or -1 if not found
     int get_arg_pos(Symbol name) {
-        for (int i = 0; i < mth_args.size(); i++) {
+        for (int i = 0; i < (int) mth_args.size(); i++) {
             if (mth_args[i]->get_name() == name) {
                 return i;
             }
@@ -149,7 +149,7 @@ public:
 
     // returns attribute's position on the vector (starting from 0) or -1 if not found
     int get_cls_attr_pos(Symbol name) {
-        for (int i = 0; i < cls_attrs.size(); i++) {
+        for (int i = 0; i < (int) cls_attrs.size(); i++) {
             if (cls_attrs[i]->get_name() == name) {
                 return i;
             }

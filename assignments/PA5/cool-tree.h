@@ -8,6 +8,7 @@
 //
 //////////////////////////////////////////////////////////
 
+#include <vector>
 
 #include "tree.h"
 #include "cool-tree.handcode.h"
@@ -27,12 +28,15 @@ public:
 #endif
 };
 
+class method_class;
 
 // define simple phylum - Class_
 typedef class Class__class *Class_;
 
 class Class__class : public tree_node {
 public:
+   std::vector<std::pair<Class_, method_class *> > all_methods;
+
    tree_node *copy()		 { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;
 
