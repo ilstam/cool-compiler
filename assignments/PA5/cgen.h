@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <vector>
 #include "emit.h"
 #include "cool-tree.h"
 #include "symtab.h"
@@ -36,6 +37,7 @@ private:
     void code_dispatch_tables();
     void code_prototypes();
     void code_initializers();
+    void code_methods();
 
     // The following creates an inheritance graph from
     // a list of classes.  The graph is implemented as
@@ -80,4 +82,19 @@ public:
     BoolConst(int);
     void code_def(ostream&, int boolclasstag);
     void code_ref(ostream&) const;
+};
+
+struct Environment {
+    Class_ cls;
+    std::vector<Symbol> let_vars;
+
+    int add_let_var(Symbol name) {
+        let_vars.push_back(name);
+        return (int) let_vars.size() - 1;
+    }
+
+    int pop_let_var() {
+        let_vars.pop_back();
+        return (int) let_vars.size() - 1;
+    }
 };

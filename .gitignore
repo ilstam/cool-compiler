@@ -64,12 +64,12 @@ assignments/PA5/cgen
 assignments/PA5/semant
 assignments/PA5/parser
 assignments/PA5/mycoolc
+assignments/PA5/coolc
 assignments/PA5/grading
 assignments/PA5/ast-lex.cc
 assignments/PA5/ast-parse.cc
 assignments/PA5/cgen-phase.cc
 assignments/PA5/cool-tree.cc
-assignments/PA5/cool-tree.handcode.h
 assignments/PA5/dumptype.cc
 assignments/PA5/handle_flags.cc
 assignments/PA5/stringtab.cc

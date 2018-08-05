@@ -36,6 +36,9 @@ std::vector<Class_> cls_ordered;
 extern void emit_string_constant(ostream& str, char *s);
 extern int cgen_debug;
 
+#define is_basic_class(name) ((name) == Object || (name) == IO || \
+                              (name) == Str || (name) == Int || (name) == Bool)
+
 //
 // Three symbols from the semantic analyzer (semant.cc) are used.
 // If e : No_type, then no code is generated for e.
@@ -972,6 +975,31 @@ void CgenClassTable::code_initializers()
     }
 }
 
+void CgenClassTable::code_methods()
+{
+    for(std::vector<Class_>::size_type i = 0; i < cls_ordered.size(); i++) {
+        Class_ cls = cls_ordered[i];
+        Symbol name = cls->get_name();
+
+        if (!is_basic_class(name)) {
+            Environment env;
+            env.cls = cls;
+
+            Features features = cls->get_features();
+            for (int i = features->first(); features->more(i); i = features->next(i)) {
+                Feature f = features->nth(i);
+
+                method_class *method = dynamic_cast<method_class *>(f);
+                if (!method) {
+                    continue; // f is an attribute not a method, so skip it
+                }
+
+                method->code(str, env);
+            }
+        }
+    }
+}
+
 void CgenClassTable::code()
 {
     if (cgen_debug) cout << "coding global data" << endl;
@@ -1002,6 +1030,7 @@ void CgenClassTable::code()
     //                   - etc...
 
     code_initializers();
+    code_methods();
 }
 
 
@@ -1036,59 +1065,65 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //   constant integers, strings, and booleans are provided.
 //
 //*****************************************************************
-
-void assign_class::code(ostream &s) {
+//
+void method_class::code(ostream &s, Environment &env)
+{
+    emit_method_ref(env.cls->get_name(), name, s);
+    s << LABEL;
 }
 
-void static_dispatch_class::code(ostream &s) {
+void assign_class::code(ostream &s, Environment &env) {
 }
 
-void dispatch_class::code(ostream &s) {
+void static_dispatch_class::code(ostream &s, Environment &env) {
 }
 
-void cond_class::code(ostream &s) {
+void dispatch_class::code(ostream &s, Environment &env) {
 }
 
-void loop_class::code(ostream &s) {
+void cond_class::code(ostream &s, Environment &env) {
 }
 
-void typcase_class::code(ostream &s) {
+void loop_class::code(ostream &s, Environment &env) {
 }
 
-void block_class::code(ostream &s) {
+void typcase_class::code(ostream &s, Environment &env) {
 }
 
-void let_class::code(ostream &s) {
+void block_class::code(ostream &s, Environment &env) {
 }
 
-void plus_class::code(ostream &s) {
+void let_class::code(ostream &s, Environment &env) {
 }
 
-void sub_class::code(ostream &s) {
+void plus_class::code(ostream &s, Environment &env) {
 }
 
-void mul_class::code(ostream &s) {
+void sub_class::code(ostream &s, Environment &env) {
 }
 
-void divide_class::code(ostream &s) {
+void mul_class::code(ostream &s, Environment &env) {
 }
 
-void neg_class::code(ostream &s) {
+void divide_class::code(ostream &s, Environment &env) {
 }
 
-void lt_class::code(ostream &s) {
+void neg_class::code(ostream &s, Environment &env) {
 }
 
-void eq_class::code(ostream &s) {
+void lt_class::code(ostream &s, Environment &env) {
 }
 
-void leq_class::code(ostream &s) {
+void eq_class::code(ostream &s, Environment &env) {
 }
 
-void comp_class::code(ostream &s) {
+void leq_class::code(ostream &s, Environment &env) {
 }
 
-void int_const_class::code(ostream& s)
+void comp_class::code(ostream &s, Environment &env) {
+}
+
+void int_const_class::code(ostream& s, Environment &env)
 {
     //
     // Need to be sure we have an IntEntry *, not an arbitrary Symbol
@@ -1096,24 +1131,24 @@ void int_const_class::code(ostream& s)
     emit_load_int(ACC,inttable.lookup_string(token->get_string()),s);
 }
 
-void string_const_class::code(ostream& s)
+void string_const_class::code(ostream& s, Environment &env)
 {
     emit_load_string(ACC,stringtable.lookup_string(token->get_string()),s);
 }
 
-void bool_const_class::code(ostream& s)
+void bool_const_class::code(ostream& s, Environment &env)
 {
     emit_load_bool(ACC, BoolConst(val), s);
 }
 
-void new__class::code(ostream &s) {
+void new__class::code(ostream &s, Environment &env) {
 }
 
-void isvoid_class::code(ostream &s) {
+void isvoid_class::code(ostream &s, Environment &env) {
 }
 
-void no_expr_class::code(ostream &s) {
+void no_expr_class::code(ostream &s, Environment &env) {
 }
 
-void object_class::code(ostream &s) {
+void object_class::code(ostream &s, Environment &env) {
 }

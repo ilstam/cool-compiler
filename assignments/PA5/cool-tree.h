@@ -199,6 +199,8 @@ public:
        return name;
    }
 
+   void code(ostream &, Environment &);
+
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
