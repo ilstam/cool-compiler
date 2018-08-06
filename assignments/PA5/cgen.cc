@@ -1231,6 +1231,20 @@ void dispatch_class::code(ostream &s, Environment &env) {
 }
 
 void cond_class::code(ostream &s, Environment &env) {
+    pred->code(s, env);
+    emit_fetch_int(T1, ACC, s);
+
+    int label_false = label_num++;
+    int label_end = label_num++;
+
+    emit_beq(T1, ZERO, label_false, s);
+    then_exp->code(s, env);
+    emit_branch(label_end, s);
+
+    emit_label_def(label_false, s);
+    else_exp->code(s, env);
+
+    emit_label_def(label_end, s);
 }
 
 void loop_class::code(ostream &s, Environment &env) {
@@ -1356,15 +1370,87 @@ void neg_class::code(ostream &s, Environment &env) {
 }
 
 void lt_class::code(ostream &s, Environment &env) {
+    e1->code(s, env);
+    emit_push(ACC, s);
+    env.push_stack_symbol(No_type);
+
+    e2->code(s, env);
+
+    emit_addiu(SP, SP, 4, s);
+    emit_load(T1, 0, SP, s);
+    env.pop_stack_symbol();
+
+    emit_move(T2, ACC, s);
+
+    emit_fetch_int(T1, T1, s);
+    emit_fetch_int(T2, T2, s);
+
+    emit_load_bool(ACC, BoolConst(1), s);
+    emit_blt(T1, T2, label_num, s);
+
+    emit_load_bool(ACC, BoolConst(0), s);
+    emit_label_def(label_num++, s);
 }
 
 void eq_class::code(ostream &s, Environment &env) {
+    e1->code(s, env);
+    emit_push(ACC, s);
+    env.push_stack_symbol(No_type);
+
+    e2->code(s, env);
+
+    emit_addiu(SP, SP, 4, s);
+    emit_load(T1, 0, SP, s);
+    env.pop_stack_symbol();
+
+    emit_move(T2, ACC, s);
+
+    if (e1->type == Int || e1->type == Str || e1->type == Bool) {
+        emit_load_bool(ACC, BoolConst(1), s);
+        emit_load_bool(A1, BoolConst(0), s);
+        emit_jal("equality_test", s);
+        return;
+    }
+
+    emit_load_bool(ACC, BoolConst(1), s);
+    emit_beq(T1, T2, label_num, s);
+    emit_load_bool(ACC, BoolConst(0), s);
+    emit_label_def(label_num++, s);
 }
 
 void leq_class::code(ostream &s, Environment &env) {
+    e1->code(s, env);
+    emit_push(ACC, s);
+    env.push_stack_symbol(No_type);
+
+    e2->code(s, env);
+
+    emit_addiu(SP, SP, 4, s);
+    emit_load(T1, 0, SP, s);
+    env.pop_stack_symbol();
+
+    emit_move(T2, ACC, s);
+
+    emit_fetch_int(T1, T1, s);
+    emit_fetch_int(T2, T2, s);
+
+    emit_load_bool(ACC, BoolConst(1), s);
+    emit_bleq(T1, T2, label_num, s);
+
+    emit_load_bool(ACC, BoolConst(0), s);
+    emit_label_def(label_num++, s);
 }
 
 void comp_class::code(ostream &s, Environment &env) {
+    e1->code(s, env);
+    emit_fetch_int(T1, ACC, s);
+
+    emit_load_bool(ACC, BoolConst(1), s);
+
+    emit_beq(T1, ZERO, label_num, s);
+    emit_load_bool(ACC, BoolConst(0), s);
+
+    emit_label_def(label_num++, s);
 }
 
 void int_const_class::code(ostream& s, Environment &env)
@@ -1389,6 +1475,15 @@ void new__class::code(ostream &s, Environment &env) {
 }
 
 void isvoid_class::code(ostream &s, Environment &env) {
+    e1->code(s, env);
+    emit_move(T1, ACC, s);
+
+    emit_load_bool(ACC, BoolConst(1), s);
+
+    emit_beq(T1, ZERO, label_num, s);
+    emit_load_bool(ACC, BoolConst(0), s);
+
+    emit_label_def(label_num++, s);
 }
 
 void no_expr_class::code(ostream &s, Environment &env) {
