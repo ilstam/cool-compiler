@@ -1269,6 +1269,23 @@ void cond_class::code(ostream &s, Environment &env) {
 }
 
 void loop_class::code(ostream &s, Environment &env) {
+    int label_loop = label_num++;
+    int label_exit = label_num++;
+
+    emit_label_def(label_loop, s);
+
+    pred->code(s, env);
+
+    emit_fetch_int(T1, ACC, s);
+    emit_beq(T1, ZERO, label_exit, s);
+
+    body->code(s, env);
+    emit_branch(label_loop, s);
+
+    emit_label_def(label_exit, s);
+
+    // loop always returns void
+    emit_move(ACC, ZERO, s);
 }
 
 void typcase_class::code(ostream &s, Environment &env) {
@@ -1512,6 +1529,14 @@ void bool_const_class::code(ostream& s, Environment &env)
 }
 
 void new__class::code(ostream &s, Environment &env) {
+    if (type_name != SELF_TYPE) {
+        emit_load_address(ACC, (char *) (std::string(type_name->get_string()) + PROTOBJ_SUFFIX).c_str(), s);
+        emit_jal("Object.copy", s);
+        emit_jal((char *) (std::string(type_name->get_string()) + CLASSINIT_SUFFIX).c_str(), s);
+        return;
+    }
+
+    // TODO: write code for when SELF_TYPE
 }
 
 void isvoid_class::code(ostream &s, Environment &env) {
@@ -1527,6 +1552,7 @@ void isvoid_class::code(ostream &s, Environment &env) {
 }
 
 void no_expr_class::code(ostream &s, Environment &env) {
+    emit_move(ACC, ZERO, s);
 }
 
 void object_class::code(ostream &s, Environment &env) {
