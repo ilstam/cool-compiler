@@ -1123,6 +1123,26 @@ void method_class::code(ostream &s, Environment &env)
 }
 
 void assign_class::code(ostream &s, Environment &env) {
+    expr->code(s, env);
+    int pos;
+
+    pos = env.get_let_var_pos_rev(name);
+    if (pos != -1) {
+        emit_store(ACC, pos + 1, SP, s);
+        return;
+    }
+
+    pos = env.get_arg_pos(name);
+    if (pos != -1) {
+        emit_store(ACC, 2 + env.get_mth_args_size() - pos, FP, s);
+        return;
+    }
+
+    pos = env.get_cls_attr_pos(name);
+    if (pos != -1) {
+        emit_store(ACC, DEFAULT_OBJFIELDS + pos, SELF, s);
+        return;
+    }
 }
 
 void static_dispatch_class::code(ostream &s, Environment &env) {
@@ -1143,7 +1163,8 @@ void static_dispatch_class::code(ostream &s, Environment &env) {
     // if $a0 != 0 then jump to labelx
     emit_bne(ACC, ZERO, label_num, s);
 
-    s << "\tla\t" << ACC << " ";
+    //s << "\tla\t" << ACC << " ";
+    emit_partial_load_address(ACC, s);
     stringtable.lookup_string(env.get_cls()->get_filename()->get_string())->code_ref(s);
     s << endl;
     emit_load_imm(T1, get_line_number(), s);
@@ -1194,7 +1215,7 @@ void dispatch_class::code(ostream &s, Environment &env) {
     // if $a0 != 0 then jump to labelx
     emit_bne(ACC, ZERO, label_num, s);
 
-    s << "\tla\t" << ACC << " ";
+    emit_partial_load_address(ACC, s);
     stringtable.lookup_string(env.get_cls()->get_filename()->get_string())->code_ref(s);
     s << endl;
     emit_load_imm(T1, get_line_number(), s);
@@ -1260,6 +1281,25 @@ void block_class::code(ostream &s, Environment &env) {
 }
 
 void let_class::code(ostream &s, Environment &env) {
+    init->code(s, env);
+
+    if (init->is_empty()) {
+        if (type_decl == Str) {
+            emit_load_string(ACC, stringtable.lookup_string(""), s);
+        } else if (type_decl == Int) {
+            emit_load_int(ACC, inttable.lookup_string("0"), s);
+        } else if (type_decl == Bool) {
+            emit_load_bool(ACC, BoolConst(0), s);
+        }
+    }
+
+    emit_push(ACC, s);
+    env.push_stack_symbol(identifier);
+
+    body->code(s, env);
+
+    emit_addiu(SP, SP, 4, s);
+    env.pop_stack_symbol();
 }
 
 void plus_class::code(ostream &s, Environment &env) {
