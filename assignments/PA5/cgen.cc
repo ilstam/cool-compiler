@@ -1249,18 +1249,110 @@ void let_class::code(ostream &s, Environment &env) {
 }
 
 void plus_class::code(ostream &s, Environment &env) {
+    // eval e1 and put the result on the stack
+    e1->code(s, env);
+    emit_push(ACC, s);
+    env.push_stack_symbol(No_type);
+
+    // eval e2 and copy the object; the new object is in $a0
+    e2->code(s, env);
+    emit_jal("Object.copy", s);
+
+    // $t1 = stack_pop(); $t1 points to e1 object
+    emit_addiu(SP, SP, 4, s);
+    emit_load(T1, 0, SP, s);
+    env.pop_stack_symbol();
+
+    // $t2 = $a0; $t2 points to e2 object
+    emit_move(T2, ACC, s);
+
+    // $t1 = $t1.int
+    emit_fetch_int(T1, T1, s);
+    // $t2 = $t2.int
+    emit_fetch_int(T2, T2, s);
+
+    // $t3 = $t1 + t2
+    emit_add(T3, T1, T2, s);
+    // $a0.int = $t3
+    emit_store(T3, 3, ACC, s);
 }
 
 void sub_class::code(ostream &s, Environment &env) {
+    // see comments on plus_class
+
+    e1->code(s, env);
+    emit_push(ACC, s);
+    env.push_stack_symbol(No_type);
+
+    e2->code(s, env);
+    emit_jal("Object.copy", s);
+
+    emit_addiu(SP, SP, 4, s);
+    emit_load(T1, 0, SP, s);
+    env.pop_stack_symbol();
+
+    emit_move(T2, ACC, s);
+
+    emit_fetch_int(T1, T1, s);
+    emit_fetch_int(T2, T2, s);
+
+    emit_sub(T3, T1, T2, s);
+    emit_store(T3, 3, ACC, s);
 }
 
 void mul_class::code(ostream &s, Environment &env) {
+    // see comments on plus_class
+
+    e1->code(s, env);
+    emit_push(ACC, s);
+    env.push_stack_symbol(No_type);
+
+    e2->code(s, env);
+    emit_jal("Object.copy", s);
+
+    emit_addiu(SP, SP, 4, s);
+    emit_load(T1, 0, SP, s);
+    env.pop_stack_symbol();
+
+    emit_move(T2, ACC, s);
+
+    emit_fetch_int(T1, T1, s);
+    emit_fetch_int(T2, T2, s);
+
+    emit_mul(T3, T1, T2, s);
+    emit_store(T3, 3, ACC, s);
 }
 
 void divide_class::code(ostream &s, Environment &env) {
+    // see comments on plus_class
+
+    e1->code(s, env);
+    emit_push(ACC, s);
+    env.push_stack_symbol(No_type);
+
+    e2->code(s, env);
+    emit_jal("Object.copy", s);
+
+    emit_addiu(SP, SP, 4, s);
+    emit_load(T1, 0, SP, s);
+    env.pop_stack_symbol();
+
+    emit_move(T2, ACC, s);
+
+    emit_fetch_int(T1, T1, s);
+    emit_fetch_int(T2, T2, s);
+
+    emit_div(T3, T1, T2, s);
+    emit_store(T3, 3, ACC, s);
 }
 
 void neg_class::code(ostream &s, Environment &env) {
+    e1->code(s, env);
+    emit_jal("Object.copy", s);
+
+    emit_fetch_int(T1, ACC, s);
+    emit_neg(T1, T1, s);
+    emit_store(T1, 3, ACC, s);
 }
 
 void lt_class::code(ostream &s, Environment &env) {
