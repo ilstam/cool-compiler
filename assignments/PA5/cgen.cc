@@ -33,6 +33,8 @@ std::map<Symbol, Class_> class_map;
 // the index of each class in this vector is its tag
 std::vector<Class_> cls_ordered;
 
+int label_num = 0;
+
 extern void emit_string_constant(ostream& str, char *s);
 extern int cgen_debug;
 
@@ -1124,6 +1126,54 @@ void assign_class::code(ostream &s, Environment &env) {
 }
 
 void static_dispatch_class::code(ostream &s, Environment &env) {
+    int num_params = 0;
+
+    for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
+        actual->nth(i)->code(s, env);
+        emit_push(ACC, s);
+        env.push_stack_symbol(No_type);
+
+        num_params++;
+    }
+
+    // $a0 = expr_obj
+    expr->code(s, env);
+
+    // catch dispatch on void
+    // if $a0 != 0 then jump to labelx
+    emit_bne(ACC, ZERO, label_num, s);
+
+    s << "\tla\t" << ACC << " ";
+    stringtable.lookup_string(env.get_cls()->get_filename()->get_string())->code_ref(s);
+    s << endl;
+    emit_load_imm(T1, get_line_number(), s);
+    emit_jal("_dispatch_abort", s);
+
+    // labelx...
+    emit_label_def(label_num++, s);
+
+    // $t1 = type_name_dispatch_pointer
+    emit_load_address(T1, (char *) (std::string(type_name->get_string()) + DISPTAB_SUFFIX).c_str(), s);
+
+    Class_ cls = class_map[type_name];
+
+    int i;
+    for (i = 0; i < (int) cls->all_methods.size(); i++) {
+        if (cls->all_methods[i].second->get_name() == name) {
+            break;
+        }
+    }
+
+    // $t1 += offset_to_proper_func
+    emit_load(T1, i, T1, s);
+    // set $ra to next instruction and jump to $t1
+    emit_jalr(T1, s);
+
+    for (int i = 0; i < num_params; i++) {
+        // this simply removes the symbols from the vector
+        // the callee is responsible for actually increasing the $sp
+        env.pop_stack_symbol();
+    }
 }
 
 void dispatch_class::code(ostream &s, Environment &env) {
@@ -1140,7 +1190,18 @@ void dispatch_class::code(ostream &s, Environment &env) {
     // $a0 = expr_obj
     expr->code(s, env);
 
-    // TODO: catch dispatch on void
+    // catch dispatch on void
+    // if $a0 != 0 then jump to labelx
+    emit_bne(ACC, ZERO, label_num, s);
+
+    s << "\tla\t" << ACC << " ";
+    stringtable.lookup_string(env.get_cls()->get_filename()->get_string())->code_ref(s);
+    s << endl;
+    emit_load_imm(T1, get_line_number(), s);
+    emit_jal("_dispatch_abort", s);
+
+    // labelx...
+    emit_label_def(label_num++, s);
 
     // $t1 = expr_obj.dispatch_pointer
     emit_load(T1, 2, ACC, s);
@@ -1157,8 +1218,7 @@ void dispatch_class::code(ostream &s, Environment &env) {
         }
     }
 
-    // $t1 = expr_obj.dispatch_pointer + offset_to_proper_func
-    // so, $t1 = pointer_to_proper_func
+    // $t1 += offset_to_proper_func
     emit_load(T1, i, T1, s);
     // set $ra to next instruction and jump to $t1
     emit_jalr(T1, s);
