@@ -881,10 +881,19 @@ void CgenClassTable::code_class_parent_tab()
     str << CLASSPARENTTAB << LABEL;
     for(auto it = cls_ordered.begin(); it != cls_ordered.end(); it++) {
         if ((*it)->get_name() == Object) {
-            str << WORD << INVALID_CLASSTAG << endl;;
+            str << WORD << INVALID_CLASSTAG << endl;
         } else {
-            str << WORD << get_class_tag((*it)->get_parent()) << endl;;
+            str << WORD << get_class_tag((*it)->get_parent()) << endl;
         }
+    }
+}
+
+void CgenClassTable::code_class_obj_tab()
+{
+    str << CLASSOBJTAB << LABEL;
+    for(auto it = cls_ordered.begin(); it != cls_ordered.end(); it++) {
+        str << WORD << (*it)->get_name() << PROTOBJ_SUFFIX << endl;
+        str << WORD << (*it)->get_name() << CLASSINIT_SUFFIX << endl;
     }
 }
 
@@ -1078,6 +1087,7 @@ void CgenClassTable::code()
 
     code_class_name_tab();
     code_class_parent_tab();
+    code_class_obj_tab();
     code_dispatch_tables();
     code_prototypes();
 
@@ -1640,7 +1650,30 @@ void new__class::code(ostream &s, Environment &env) {
         return;
     }
 
-    // TODO: write code for when SELF_TYPE
+    emit_load_address(T1, CLASSOBJTAB, s);
+
+    // $t2 = self.tag
+    emit_load(T2, 0, SELF, s);
+    // $t2 = $t2 * 8
+    emit_load_imm(T3, 8, s);
+    emit_mul(T2, T2, T3, s);
+    // $t1 += offset in the CLASSOBJTAB
+    emit_addu(T1, T1, T2, s);
+    // $t1 now points to SELF_TYPE_CLASS_protObj
+
+    // push $t1 to the stack
+    emit_push(T1, s);
+
+    emit_load(ACC, 0, T1, s);
+    emit_jal("Object.copy", s);
+
+    // pop old pointer from the stack to $t1
+    emit_addiu(SP, SP, 4, s);
+    emit_load(T1, 0, SP, s);
+
+    // $t1 += 1 so it now points to SELF_TYPE_CLASS_init
+    emit_load(T1, 1, T1, s);
+    emit_jalr(T1, s);
 }
 
 void isvoid_class::code(ostream &s, Environment &env) {
