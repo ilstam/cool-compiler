@@ -1162,8 +1162,11 @@ void method_class::code(ostream &s, Environment &env)
     emit_load(FP, 3, SP, s);
     emit_load(SELF, 2, SP, s);
     emit_load(RA, 1, SP, s);
+
     // destroy the stack frame
     emit_addiu(SP, SP, (DEFAULT_OBJFIELDS + env.get_mth_args_size()) * 4, s);
+    env.clear_mth_args();
+
     s << RET << "\n";
 }
 

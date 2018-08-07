@@ -117,6 +117,10 @@ public:
         mth_args.push_back(formal);
     }
 
+    void clear_mth_args() {
+        mth_args.clear();
+    }
+
     void push_stack_symbol(Symbol name) {
         stack_symbols.push_back(name);
     }
