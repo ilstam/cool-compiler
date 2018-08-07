@@ -109,7 +109,7 @@ public:
         return mth_args.size();
     }
 
-    void add_class_attr(attr_class *attr) {
+    void add_cls_attr(attr_class *attr) {
         cls_attrs.push_back(attr);
     }
 

@@ -29,6 +29,7 @@ public:
 };
 
 class method_class;
+class attr_class;
 
 // define simple phylum - Class_
 typedef class Class__class *Class_;
@@ -36,6 +37,7 @@ typedef class Class__class *Class_;
 class Class__class : public tree_node {
 public:
    std::vector<std::pair<Class_, method_class *> > all_methods;
+   std::vector<attr_class *> all_attrs;
 
    tree_node *copy()		 { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;

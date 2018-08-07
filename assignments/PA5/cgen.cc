@@ -897,6 +897,21 @@ void CgenClassTable::code_class_obj_tab()
     }
 }
 
+void get_class_attrs_recursively(Class_ cls, std::vector<attr_class *> &attrs) {
+    if (cls->get_name() != Object) {
+        get_class_attrs_recursively(class_map[cls->get_parent()], attrs);
+    }
+
+    Features features = cls->get_features();
+    for (int i = features->first(); features->more(i); i = features->next(i)) {
+        attr_class *at = dynamic_cast<attr_class *>(features->nth(i));
+
+        if (at) {
+            attrs.push_back(at);
+        }
+    }
+}
+
 void get_methods_recursively(Class_ cls, std::vector<std::pair<Class_, method_class *> > &methods)
 {
     if (cls->get_name() != Object) {
@@ -943,32 +958,18 @@ void CgenClassTable::code_dispatch_tables()
 void CgenClassTable::code_prototypes()
 {
     for(std::vector<Class_>::size_type i = 0; i < cls_ordered.size(); i++) {
-        Features features = cls_ordered[i]->get_features();
-        int num_attrs = 0;
+        Class_ cls = cls_ordered[i];
 
-        for (int i = features->first(); features->more(i); i = features->next(i)) {
-            attr_class *at = dynamic_cast<attr_class *>(features->nth(i));
-            if (!at) {
-                continue; // f is a method not an attribute, so skip it
-            }
-            num_attrs++;
-        }
+        get_class_attrs_recursively(cls, cls->all_attrs);
 
         str << WORD << "-1" << endl;
-        str << cls_ordered[i]->get_name() << PROTOBJ_SUFFIX << LABEL;
+        str << cls->get_name() << PROTOBJ_SUFFIX << LABEL;
         str << WORD << i << endl; // class tag
-        str << WORD << DEFAULT_OBJFIELDS + num_attrs << endl; // object size
-        str << WORD << cls_ordered[i]->get_name() << DISPTAB_SUFFIX << endl;
+        str << WORD << DEFAULT_OBJFIELDS + cls->all_attrs.size() << endl; // object size
+        str << WORD << cls->get_name() << DISPTAB_SUFFIX << endl;
 
-        // here I run the loop again but the provided code is so stupidly
-        // designed that I cannot avoid it without modifying stringtab.{cc|h}
-        for (int i = features->first(); features->more(i); i = features->next(i)) {
-            attr_class *at = dynamic_cast<attr_class *>(features->nth(i));
-            if (!at) {
-                continue; // f is a method not an attribute, so skip it
-            }
-
-            Symbol type = at->get_type_decl();
+        for (auto attr : cls->all_attrs) {
+            Symbol type = attr->get_type_decl();
             str << WORD;
             if (type == Int) {
                 inttable.lookup_string("0")->code_ref(str);
@@ -999,32 +1000,23 @@ void CgenClassTable::code_initializers()
         emit_move(SELF, ACC, str);
 
         if (cls->get_name() != Object) {
+            // initialize parent class first
             str << "\tjal " << cls->get_parent() << CLASSINIT_SUFFIX << endl;
+        }
+
+        Environment env;
+        env.set_cls(cls);
+        for (auto attr : cls->all_attrs) {
+            env.add_cls_attr(attr);
         }
 
         Features features = cls->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
             attr_class *at = dynamic_cast<attr_class *>(features->nth(i));
 
-            if (!at) {
-                continue; // f is a method not an attribute, so skip it
-            }
-
-            if (!at->get_init()->is_empty()) {
-                Environment env;
-                env.set_cls(cls);
-
-                Features features = cls->get_features();
-                for (int i = features->first(); features->more(i); i = features->next(i)) {
-                    attr_class *attribute = dynamic_cast<attr_class *>(features->nth(i));
-
-                    if (attribute) {
-                        env.add_class_attr(attribute);
-                    }
-                }
-
+            if (at && !at->get_init()->is_empty()) {
                 at->get_init()->code(str, env);
-                emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str);
+                emit_store(ACC, DEFAULT_OBJFIELDS + env.get_cls_attr_pos(at->get_name()), SELF, str);
             }
         }
 
@@ -1047,22 +1039,17 @@ void CgenClassTable::code_methods()
         if (!is_basic_class(name)) {
             Environment env;
             env.set_cls(cls);
+            for (auto attr : cls->all_attrs) {
+                env.add_cls_attr(attr);
+            }
 
-            std::vector<method_class *> methods;
             Features features = cls->get_features();
 
             for (int i = features->first(); features->more(i); i = features->next(i)) {
-                attr_class *attribute = dynamic_cast<attr_class *>(features->nth(i));
-
-                if (attribute) {
-                    env.add_class_attr(attribute);
-                } else {
-                    methods.push_back(dynamic_cast<method_class *>(features->nth(i)));
+                method_class *method = dynamic_cast<method_class *>(features->nth(i));
+                if (method) {
+                    method->code(str, env);
                 }
-            }
-
-            for (auto it = methods.begin(); it != methods.end(); it++) {
-                (*it)->code(str, env);
             }
         }
     }
