@@ -872,6 +872,21 @@ void CgenClassTable::code_class_name_tab()
     }
 }
 
+/*
+ * Prints a table which at index (class_tag) * 4 contains the tag of the
+ * corresponding parent class tag.
+ */
+void CgenClassTable::code_class_parent_tab()
+{
+    str << CLASSPARENTTAB << LABEL;
+    for(auto it = cls_ordered.begin(); it != cls_ordered.end(); it++) {
+        if ((*it)->get_name() == Object) {
+            str << WORD << INVALID_CLASSTAG << endl;;
+        } else {
+            str << WORD << get_class_tag((*it)->get_parent()) << endl;;
+        }
+    }
+}
 
 void get_methods_recursively(Class_ cls, std::vector<std::pair<Class_, method_class *> > &methods)
 {
@@ -1043,6 +1058,7 @@ void CgenClassTable::code()
     //
 
     code_class_name_tab();
+    code_class_parent_tab();
     code_dispatch_tables();
     code_prototypes();
 
@@ -1289,6 +1305,87 @@ void loop_class::code(ostream &s, Environment &env) {
 }
 
 void typcase_class::code(ostream &s, Environment &env) {
+    expr->code(s, env);
+
+    // push expr onto the stack
+    // the name of the env whichs binds to this value will be pushed later
+    emit_push(ACC, s);
+
+    // check case on void
+    emit_bne(ACC, ZERO, label_num, s);
+
+    emit_partial_load_address(ACC, s);
+    stringtable.lookup_string(env.get_cls()->get_filename()->get_string())->code_ref(s);
+    s << endl;
+    emit_load_imm(T1, get_line_number(), s);
+    emit_jal("_case_abort2", s);
+
+    // expr was not void, execution continues here. $a0 holds expr object
+    emit_label_def(label_num++, s);
+
+    int label_begin = label_num++;
+    int label_end = label_num++;
+    int label_tag_is_valid = label_num++;
+
+    // $t1 = expr_obj.tag
+    emit_load(T1, TAG_OFFSET, ACC, s);
+
+    // everytime we jump back here, T1 contains the tag of a new class
+    // if T1 is ever equal to INVALID_CLASSTAG it means that the case statement
+    // has no match which is a runtime error
+    emit_label_def(label_begin, s);
+    emit_load_imm(T2, INVALID_CLASSTAG, s);
+    emit_bne(T1, T2, label_tag_is_valid, s);
+    emit_jal("_case_abort", s);
+
+    // let's check if any of the branches have a type that matches exactly
+    // the class tag of T1
+    emit_label_def(label_tag_is_valid, s);
+
+    int label_branch_0 = label_num;
+
+    for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
+        // $t2 = branch_i.tag
+        emit_load_imm(T2, get_class_tag(cases->nth(i)->get_type_decl()), s);
+        // if $t1 == $t2 jump to the label for the corresponding branch
+        emit_beq(T1, T2, label_num++, s);
+    }
+
+    // none of the tags matched, so let's try get t1's parent and try again
+    // we'll go all the way to the top of the class hierarhy until we eventually
+    // have a match or have a runtime error
+    emit_load_address(T2, CLASSPARENTTAB, s);
+
+    // calculate the offset in the parent_table. $t1 holds the type's tag
+    // $t3 = $t1 * 4
+    emit_load_imm(T3, 4, s);
+    emit_mul(T3, T1, T3, s);
+    // $t2 += $t3
+    emit_add(T2, T2, T3, s);
+
+    // set $t1 to the class tag of the parent of the old $t1 value
+    emit_load(T1, 0, T2, s);
+
+    // let's go back and try again
+    emit_branch(label_begin, s);
+
+    // finally generate code for each branch
+    for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
+        emit_label_def(label_branch_0++, s);
+
+        // bind the branch var name to expr object that is already in the stack
+        env.push_stack_symbol(cases->nth(i)->get_name());
+
+        cases->nth(i)->get_expr()->code(s, env);
+
+        env.pop_stack_symbol();
+        emit_branch(label_end, s);
+    }
+
+    emit_label_def(label_end, s);
+
+    // pop expr from the stack
+    emit_addiu(SP, SP, 4, s);
 }
 
 void block_class::code(ostream &s, Environment &env) {

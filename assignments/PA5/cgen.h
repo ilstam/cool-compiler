@@ -34,6 +34,7 @@ private:
     void code_constants();
 
     void code_class_name_tab();
+    void code_class_parent_tab();
     void code_dispatch_tables();
     void code_prototypes();
     void code_initializers();
