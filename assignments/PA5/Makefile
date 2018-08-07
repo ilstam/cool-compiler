@@ -7,7 +7,7 @@ AR= gar
 ARCHIVE_NEW= -cr
 RANLIB= gar -qs
 
-SRC= cgen.cc cgen.h cgen_supp.cc cool-tree.h emit.h example.cl README cool-tree.handcode.h
+SRC= cgen.cc cgen.h cgen_supp.cc cool-tree.h emit.h README cool-tree.handcode.h
 CSRC= cgen-phase.cc utilities.cc stringtab.cc dumptype.cc tree.cc cool-tree.cc ast-lex.cc ast-parse.cc handle_flags.cc
 TSRC= mycoolc
 CGEN=
