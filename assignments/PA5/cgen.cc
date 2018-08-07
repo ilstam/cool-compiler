@@ -1159,23 +1159,41 @@ void method_class::code(ostream &s, Environment &env)
 
 void assign_class::code(ostream &s, Environment &env) {
     expr->code(s, env);
-    int pos;
+    int pos, offset;
 
     pos = env.get_let_var_pos_rev(name);
     if (pos != -1) {
-        emit_store(ACC, pos + 1, SP, s);
+        offset = pos + 1;
+        emit_store(ACC, offset, SP, s);
+
+        if (cgen_Memmgr == GC_GENGC) {
+            emit_addiu(A1, SP, 4 * offset, s);
+            emit_gc_assign(s);
+        }
         return;
     }
 
     pos = env.get_arg_pos(name);
     if (pos != -1) {
-        emit_store(ACC, 2 + env.get_mth_args_size() - pos, FP, s);
+        offset = 2 + env.get_mth_args_size() - pos;
+        emit_store(ACC, offset, FP, s);
+
+        if (cgen_Memmgr == GC_GENGC) {
+            emit_addiu(A1, FP, 4 * offset, s);
+            emit_gc_assign(s);
+        }
         return;
     }
 
     pos = env.get_cls_attr_pos(name);
     if (pos != -1) {
-        emit_store(ACC, DEFAULT_OBJFIELDS + pos, SELF, s);
+        offset = DEFAULT_OBJFIELDS + pos;
+        emit_store(ACC, offset, SELF, s);
+
+        if (cgen_Memmgr == GC_GENGC) {
+            emit_addiu(A1, SELF, 4 * offset, s);
+            emit_gc_assign(s);
+        }
         return;
     }
 }
