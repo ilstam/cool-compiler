@@ -979,13 +979,15 @@ void CgenClassTable::code_initializers()
 {
     for(std::vector<Class_>::size_type i = 0; i < cls_ordered.size(); i++) {
         Class_ cls = cls_ordered[i];
+
         str << cls->get_name() << CLASSINIT_SUFFIX << LABEL;
-        str << "\taddiu   $sp $sp -12" << endl
-            << "\tsw  $fp 12($sp)" << endl
-            << "\tsw  $s0 8($sp)" << endl
-            << "\tsw  $ra 4($sp)" << endl
-            << "\taddiu   $fp $sp 4" << endl
-            << "\tmove    $s0 $a0" << endl;
+
+        emit_addiu(SP, SP, -12, str);
+        emit_store(FP, 3, SP, str);
+        emit_store(SELF, 2, SP, str);
+        emit_store(RA, 1, SP, str);
+        emit_addiu(FP, SP, 4, str);
+        emit_move(SELF, ACC, str);
 
         if (cls->get_name() != Object) {
             str << "\tjal " << cls->get_parent() << CLASSINIT_SUFFIX << endl;
@@ -994,19 +996,36 @@ void CgenClassTable::code_initializers()
         Features features = cls->get_features();
         for (int i = features->first(); features->more(i); i = features->next(i)) {
             attr_class *at = dynamic_cast<attr_class *>(features->nth(i));
+
             if (!at) {
                 continue; // f is a method not an attribute, so skip it
             }
 
-            // TODO: add code for member initialization
+            if (!at->get_init()->is_empty()) {
+                Environment env;
+                env.set_cls(cls);
+
+                Features features = cls->get_features();
+                for (int i = features->first(); features->more(i); i = features->next(i)) {
+                    attr_class *attribute = dynamic_cast<attr_class *>(features->nth(i));
+
+                    if (attribute) {
+                        env.add_class_attr(attribute);
+                    }
+                }
+
+                at->get_init()->code(str, env);
+                emit_store(ACC, DEFAULT_OBJFIELDS + i, SELF, str);
+            }
         }
 
-        str << "\tmove    $a0 $s0" << endl
-            << "\tlw  $fp 12($sp)" << endl
-            << "\tlw  $s0 8($sp)" << endl
-            << "\tlw  $ra 4($sp)" << endl
-            << "\taddiu   $sp $sp 12" << endl
-            << "\tjr  $ra" << endl;
+        emit_move(ACC, SELF, str);
+        emit_load(FP, 3, SP, str);
+        emit_load(SELF, 2, SP, str);
+        emit_load(RA, 1, SP, str);
+        emit_addiu(SP, SP, 12, str);
+
+        emit_return(str);
     }
 }
 
@@ -1446,8 +1465,6 @@ void plus_class::code(ostream &s, Environment &env) {
 }
 
 void sub_class::code(ostream &s, Environment &env) {
-    // see comments on plus_class
-
     e1->code(s, env);
     emit_push(ACC, s);
     env.push_stack_symbol(No_type);
@@ -1469,8 +1486,6 @@ void sub_class::code(ostream &s, Environment &env) {
 }
 
 void mul_class::code(ostream &s, Environment &env) {
-    // see comments on plus_class
-
     e1->code(s, env);
     emit_push(ACC, s);
     env.push_stack_symbol(No_type);
@@ -1492,8 +1507,6 @@ void mul_class::code(ostream &s, Environment &env) {
 }
 
 void divide_class::code(ostream &s, Environment &env) {
-    // see comments on plus_class
-
     e1->code(s, env);
     emit_push(ACC, s);
     env.push_stack_symbol(No_type);
@@ -1607,21 +1620,15 @@ void comp_class::code(ostream &s, Environment &env) {
     emit_label_def(label_num++, s);
 }
 
-void int_const_class::code(ostream& s, Environment &env)
-{
-    //
-    // Need to be sure we have an IntEntry *, not an arbitrary Symbol
-    //
+void int_const_class::code(ostream& s, Environment &env) {
     emit_load_int(ACC,inttable.lookup_string(token->get_string()),s);
 }
 
-void string_const_class::code(ostream& s, Environment &env)
-{
+void string_const_class::code(ostream& s, Environment &env) {
     emit_load_string(ACC,stringtable.lookup_string(token->get_string()),s);
 }
 
-void bool_const_class::code(ostream& s, Environment &env)
-{
+void bool_const_class::code(ostream& s, Environment &env) {
     emit_load_bool(ACC, BoolConst(val), s);
 }
 

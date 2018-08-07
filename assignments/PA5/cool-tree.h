@@ -247,6 +247,10 @@ public:
        return type_decl;
    }
 
+   Expression get_init() {
+       return init;
+   }
+
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
